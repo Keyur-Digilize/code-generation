@@ -1,0 +1,980 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Aggregation_transaction {
+  id                  String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transaction_id      String          @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id          String          @db.Uuid
+  batch_id            String          @db.Uuid
+  user_id             String          @db.Uuid
+  aggregation_count   Int             @default(0)
+  product_gen_id      String
+  packagingHierarchy  Int
+  producthistory_uuid String          @db.Uuid
+  status              Status          @default(pending)
+  created_at          DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime        @db.Timestamptz(6)
+  batch               batch           @relation(fields: [batch_id], references: [id])
+  product             product         @relation(fields: [product_id], references: [id])
+  product_history     product_history @relation(fields: [producthistory_uuid], references: [id])
+  users               users           @relation(fields: [user_id], references: [id])
+  Scanned_code        Scanned_code[]
+}
+
+model ApiRegistry {
+  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  api_id            Int                 @default(autoincrement())
+  name              String              @db.VarChar(255)
+  endpoint          String              @db.VarChar(255)
+  method            String              @db.VarChar(10)
+  path              String              @db.VarChar(255)
+  updated_at        DateTime            @default(now()) @db.Timestamptz(6)
+  created_at        DateTime            @default(now()) @db.Timestamptz(6)
+  ApiScreenRegistry ApiScreenRegistry[]
+
+  @@unique([name, endpoint, method, path])
+}
+
+model ApiScreenRegistry {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  api_id         String         @db.Uuid
+  screen_id      String         @db.Uuid
+  updated_at     DateTime       @default(now()) @db.Timestamptz(6)
+  created_at     DateTime       @default(now()) @db.Timestamptz(6)
+  ApiRegistry    ApiRegistry    @relation(fields: [api_id], references: [id])
+  ScreenRegistry ScreenRegistry @relation(fields: [screen_id], references: [id])
+
+  @@unique([api_id, screen_id])
+}
+
+model CodeGenerationRequest {
+  id                           String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id                   String                         @db.Uuid
+  batch_id                     String                         @db.Uuid
+  location_id                  String                         @db.Uuid
+  generation_id                String
+  packaging_hierarchy          String
+  no_of_codes                  String
+  generated_by                 String
+  created_at                   DateTime                       @default(now()) @db.Timestamptz(6)
+  status                       CodeGenerationRequestStatus    @default(requested)
+  batch_quantity               String
+  product_historyId            String?                        @db.Uuid
+  batch                        batch                          @relation(fields: [batch_id], references: [id])
+  locations                    locations                      @relation(fields: [location_id], references: [id])
+  product_history              product_history?               @relation(fields: [product_historyId], references: [id])
+  product                      product                        @relation(fields: [product_id], references: [id])
+  CodeGenerationRequestHistory CodeGenerationRequestHistory[]
+}
+
+model CodeGenerationRequestHistory {
+  id                         String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codeGenerationRequest_uuid String                      @db.Uuid
+  product_id                 String                      @db.Uuid
+  batch_id                   String                      @db.Uuid
+  location_id                String                      @db.Uuid
+  generation_id              String
+  packaging_hierarchy        String
+  no_of_codes                String
+  generated_by               String
+  created_at                 DateTime                    @default(now()) @db.Timestamptz(6)
+  status                     CodeGenerationRequestStatus @default(requested)
+  batch_quantity             String
+  is_latest                  Boolean                     @default(true)
+  product_historyId          String?                     @db.Uuid
+  batch                      batch                       @relation(fields: [batch_id], references: [id])
+  CodeGenerationRequest      CodeGenerationRequest       @relation(fields: [codeGenerationRequest_uuid], references: [id])
+  locations                  locations                   @relation(fields: [location_id], references: [id])
+  product_history            product_history?            @relation(fields: [product_historyId], references: [id])
+  product                    product                     @relation(fields: [product_id], references: [id])
+}
+
+model CodeGenerationSummary {
+  id                  String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id          String           @db.Uuid
+  product_name        String
+  generation_id       String
+  packaging_hierarchy String
+  last_generated      String
+  created_at          DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime         @db.Timestamptz(6)
+  product_historyId   String?          @db.Uuid
+  product_history     product_history? @relation(fields: [product_historyId], references: [id])
+  product             product          @relation(fields: [product_id], references: [id])
+}
+
+model CodesGenerated {
+  id         Int      @unique @default(autoincrement())
+  code       String   @unique
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model Company {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  company_id      String            @unique @db.VarChar(20)
+  gs1_prefix      String            @unique @db.VarChar(10)
+  gs2_prefix      String?           @unique @db.VarChar(10)
+  gs3_prefix      String?           @unique @db.VarChar(10)
+  company_name    String            @unique @db.VarChar(50)
+  mfg_licence_no  String            @unique @db.VarChar(125)
+  email           String            @default("") @db.VarChar(125)
+  contact         String            @default("") @db.VarChar(10)
+  address         String            @default("") @db.VarChar(150)
+  esign_status    esign_status      @default(null)
+  sent_to_cloud   Boolean           @default(false)
+  created_at      DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime          @default(now()) @db.Timestamptz(6)
+  CompanyHistory  CompanyHistory[]
+  product         product[]
+  product_history product_history[]
+}
+
+model CompanyHistory {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  company_uuid   String       @db.Uuid
+  company_id     String       @db.VarChar(20)
+  company_name   String       @db.VarChar(50)
+  mfg_licence_no String       @db.VarChar(125)
+  gs1_prefix     String       @unique @db.VarChar(10)
+  gs2_prefix     String?      @unique @db.VarChar(10)
+  gs3_prefix     String?      @unique @db.VarChar(10)
+  sent_to_cloud  Boolean      @default(false)
+  email          String       @default("") @db.VarChar(125)
+  contact        String       @default("") @db.VarChar(10)
+  address        String       @default("") @db.VarChar(150)
+  esign_status   esign_status @default(null)
+  created_at     DateTime     @default(now()) @db.Timestamptz(6)
+  is_latest      Boolean      @default(true)
+  Company        Company      @relation(fields: [company_uuid], references: [id], onDelete: Cascade, map: "companyhistory_company_fk")
+}
+
+model ControlPanelMaster {
+  id                              String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                            String                            @unique
+  ip                              String                            @unique @db.VarChar(15)
+  port                            Int
+  created_at                      DateTime                          @default(now()) @db.Timestamptz(6)
+  updated_at                      DateTime                          @db.Timestamptz(6)
+  esign_status                    esign_status?                     @default(null)
+  ControlPanelMasterHistory       ControlPanelMasterHistory[]
+  PrinterLineConfiguration        PrinterLineConfiguration[]
+  PrinterLineConfigurationHistory PrinterLineConfigurationHistory[]
+}
+
+model ControlPanelMasterHistory {
+  id                      String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  controlpanelmaster_uuid String             @db.Uuid
+  name                    String
+  ip                      String             @db.VarChar(15)
+  port                    Int
+  created_at              DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime           @db.Timestamptz(6)
+  esign_status            esign_status?      @default(null)
+  is_latest               Boolean            @default(true)
+  ControlPanelMaster      ControlPanelMaster @relation(fields: [controlpanelmaster_uuid], references: [id])
+}
+
+model CountryMaster {
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  country              String                 @unique @db.VarChar(100)
+  codeStructure        String
+  CountryMasterHistory CountryMasterHistory[]
+  product              product[]
+  product_history      product_history[]
+}
+
+model CountryMasterHistory {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  country       String        @db.VarChar(100)
+  country_id    String        @db.Uuid
+  codeStructure String
+  CountryMaster CountryMaster @relation(fields: [country_id], references: [id])
+}
+
+model PrinterCategory {
+  id                              String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  printer_category_id             String                            @unique @db.VarChar(50)
+  printer_category_name           String                            @db.VarChar(50)
+  printingTechnology              PrintingTechnology
+  esign_status                    esign_status?                     @default(null)
+  created_at                      DateTime                          @default(now()) @db.Timestamptz(6)
+  updated_at                      DateTime                          @db.Timestamptz(6)
+  PrinterCategoryHistory          PrinterCategoryHistory[]
+  PrinterLineConfiguration        PrinterLineConfiguration[]
+  PrinterLineConfigurationHistory PrinterLineConfigurationHistory[]
+  PrinterMaster                   PrinterMaster[]
+  PrinterMasterHistory            PrinterMasterHistory[]
+}
+
+model PrinterCategoryHistory {
+  id                    String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  printer_category_uuid String             @db.Uuid
+  printer_category_id   String             @db.VarChar(50)
+  printer_category_name String             @db.VarChar(50)
+  printingTechnology    PrintingTechnology
+  esign_status          esign_status?      @default(null)
+  is_latest             Boolean            @default(true)
+  created_at            DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime           @default(now()) @db.Timestamptz(6)
+  PrinterCategory       PrinterCategory    @relation(fields: [printer_category_uuid], references: [id])
+}
+
+model PrinterLineConfiguration {
+  id                              String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  printer_line_name               String                            @unique @db.VarChar(50)
+  location_id                     String                            @db.Uuid
+  area_category_id                String                            @db.Uuid
+  area_id                         String                            @db.Uuid
+  enabled                         Boolean
+  printer_category_id             String                            @db.Uuid
+  printer_id                      String                            @db.Uuid
+  control_panel_id                String                            @db.Uuid
+  line_no                         Int
+  esign_status                    esign_status?                     @default(null)
+  created_at                      DateTime                          @default(now()) @db.Timestamptz(6)
+  updated_at                      DateTime                          @db.Timestamptz(6)
+  camera_ip                       String                            @default("") @db.VarChar(50)
+  camera_port                     Int                               @default(0)
+  line_pc_ip                      String                            @default("") @db.VarChar(50)
+  area_category                   area_category                     @relation(fields: [area_category_id], references: [id])
+  area                            area                              @relation(fields: [area_id], references: [id])
+  ControlPanelMaster              ControlPanelMaster                @relation(fields: [control_panel_id], references: [id])
+  locations                       locations                         @relation(fields: [location_id], references: [id])
+  PrinterCategory                 PrinterCategory                   @relation(fields: [printer_category_id], references: [id])
+  PrinterMaster                   PrinterMaster                     @relation(fields: [printer_id], references: [id])
+  PrinterLineConfigurationHistory PrinterLineConfigurationHistory[]
+  PrinterLineSetting              PrinterLineSetting[]
+  printingStatus                  printingStatus[]
+}
+
+model PrinterLineConfigurationHistory {
+  id                            String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  printerlineconfiguration_uuid String                   @db.Uuid
+  printer_line_name             String                   @db.VarChar(50)
+  location_id                   String                   @db.Uuid
+  area_category_id              String                   @db.Uuid
+  printer_category_id           String                   @db.Uuid
+  printer_id                    String                   @db.Uuid
+  enabled                       Boolean
+  area_id                       String                   @db.Uuid
+  control_panel_id              String                   @db.Uuid
+  line_no                       Int
+  esign_status                  esign_status?            @default(null)
+  created_at                    DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at                    DateTime                 @db.Timestamptz(6)
+  is_latest                     Boolean                  @default(true)
+  camera_ip                     String                   @default("") @db.VarChar(50)
+  camera_port                   Int                      @default(0)
+  line_pc_ip                    String                   @default("") @db.VarChar(50)
+  area_category                 area_category            @relation(fields: [area_category_id], references: [id])
+  area                          area                     @relation(fields: [area_id], references: [id])
+  ControlPanelMaster            ControlPanelMaster       @relation(fields: [control_panel_id], references: [id])
+  locations                     locations                @relation(fields: [location_id], references: [id])
+  PrinterCategory               PrinterCategory          @relation(fields: [printer_category_id], references: [id])
+  PrinterMaster                 PrinterMaster            @relation(fields: [printer_id], references: [id])
+  PrinterLineConfiguration      PrinterLineConfiguration @relation(fields: [printerlineconfiguration_uuid], references: [id])
+}
+
+model PrinterLineSetting {
+  id                       String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  printer_line_id          String                   @db.Uuid
+  label                    String                   @db.VarChar(50)
+  delay                    Int?
+  date_format              String
+  no_of_groups             Int                      @default(1)
+  print_per_group          Int
+  variables                String[]
+  created_at               DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime                 @db.Timestamptz(6)
+  PrinterLineConfiguration PrinterLineConfiguration @relation(fields: [printer_line_id], references: [id])
+}
+
+model PrinterMaster {
+  id                              String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  printer_category_id             String                            @db.Uuid
+  printer_id                      String                            @unique @db.VarChar(50)
+  printer_ip                      String                            @unique @db.VarChar(50)
+  printer_port                    String                            @db.VarChar(50)
+  esign_status                    esign_status?                     @default(null)
+  created_at                      DateTime                          @default(now()) @db.Timestamptz(6)
+  updated_at                      DateTime                          @db.Timestamptz(6)
+  PrinterLineConfiguration        PrinterLineConfiguration[]
+  PrinterLineConfigurationHistory PrinterLineConfigurationHistory[]
+  PrinterCategory                 PrinterCategory                   @relation(fields: [printer_category_id], references: [id])
+  PrinterMasterHistory            PrinterMasterHistory[]
+}
+
+model PrinterMasterHistory {
+  id                  String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  printermaster_uuid  String          @db.Uuid
+  printer_category_id String          @db.Uuid
+  printer_id          String          @db.VarChar(50)
+  printer_ip          String          @db.VarChar(50)
+  printer_port        String          @db.VarChar(50)
+  esign_status        esign_status?   @default(null)
+  created_at          DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime        @db.Timestamptz(6)
+  is_latest           Boolean         @default(true)
+  PrinterCategory     PrinterCategory @relation(fields: [printer_category_id], references: [id])
+  PrinterMaster       PrinterMaster   @relation(fields: [printermaster_uuid], references: [id])
+}
+
+model ProductGenerationId {
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id        String           @db.Uuid
+  product_name      String
+  generation_id     String
+  sent_to_cloud     Boolean          @default(false)
+  product_historyId String?          @db.Uuid
+  product_history   product_history? @relation(fields: [product_historyId], references: [id])
+  product           product          @relation(fields: [product_id], references: [id])
+}
+
+model Scanned_code {
+  id                      String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transaction_id          String                  @db.Uuid
+  scanned_0_codes         Json[]                  @default([])
+  scanned_1_codes         Json[]                  @default([])
+  scanned_2_codes         Json[]                  @default([])
+  scanned_3_codes         Json[]                  @default([])
+  scanned_5_codes         Json[]                  @default([])
+  Aggregation_transaction Aggregation_transaction @relation(fields: [transaction_id], references: [id])
+}
+
+model ScreenRegistry {
+  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  screen_id         Int                 @default(autoincrement())
+  screen_name       String              @unique @db.VarChar(50)
+  screen_url        String              @unique @db.VarChar(255)
+  updated_at        DateTime            @default(now()) @db.Timestamptz(6)
+  created_at        DateTime            @default(now()) @db.Timestamptz(6)
+  ApiScreenRegistry ApiScreenRegistry[]
+
+  @@unique([screen_name, screen_url])
+}
+
+model area {
+  id                              String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  area_id                         String                            @unique
+  area_name                       String                            @unique
+  area_category_id                String                            @db.Uuid
+  location_uuid                   String                            @db.Uuid
+  esign_status                    esign_status                      @default(null)
+  created_at                      DateTime                          @default(now()) @db.Timestamptz(6)
+  updated_at                      DateTime                          @default(now()) @db.Timestamptz(6)
+  PrinterLineConfiguration        PrinterLineConfiguration[]
+  PrinterLineConfigurationHistory PrinterLineConfigurationHistory[]
+  area_category                   area_category                     @relation(fields: [area_category_id], references: [id])
+  locations                       locations                         @relation(fields: [location_uuid], references: [id])
+  area_history                    area_history[]
+}
+
+model area_category {
+  id                              String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  area_category_name              String                            @unique
+  esign_status                    esign_status                      @default(null)
+  created_at                      DateTime                          @default(now()) @db.Timestamptz(6)
+  updated_at                      DateTime                          @default(now()) @db.Timestamptz(6)
+  PrinterLineConfiguration        PrinterLineConfiguration[]
+  PrinterLineConfigurationHistory PrinterLineConfigurationHistory[]
+  area                            area[]
+  area_history                    area_history[]
+  areacategory_history            areacategory_history[]
+}
+
+model area_history {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  area_id          String
+  area_name        String
+  area_category_id String        @db.Uuid
+  location_uuid    String        @db.Uuid
+  area_uuid        String        @db.Uuid
+  esign_status     esign_status  @default(null)
+  is_latest        Boolean       @default(true)
+  created_at       DateTime      @default(now()) @db.Timestamptz(6)
+  area_category    area_category @relation(fields: [area_category_id], references: [id])
+  area             area          @relation(fields: [area_uuid], references: [id])
+  locations        locations     @relation(fields: [location_uuid], references: [id])
+}
+
+model areacategory_history {
+  id                 String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  area_category_name String
+  areacategory_uuid  String        @db.Uuid
+  esign_status       esign_status  @default(null)
+  created_at         DateTime      @default(now()) @db.Timestamptz(6)
+  is_latest          Boolean       @default(true)
+  area_category      area_category @relation(fields: [areacategory_uuid], references: [id])
+}
+
+model audit_logs {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  performed_action String
+  remarks          String
+  user_name        String
+  user_id          String?
+  performed_at     DateTime @default(now()) @db.Timestamptz(6)
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model batch {
+  id                           String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  batch_no                     String                         @unique
+  product_uuid                 String                         @db.Uuid
+  producthistory_uuid          String                         @db.Uuid
+  location_id                  String                         @db.Uuid
+  qty                          Int
+  esign_status                 esign_status                   @default(null)
+  manufacturing_date           DateTime?
+  expiry_date                  DateTime?
+  updated_at                   DateTime                       @default(now()) @db.Timestamptz(6)
+  created_at                   DateTime                       @default(now()) @db.Timestamptz(6)
+  sent_to_cloud                Boolean                        @default(false)
+  Aggregation_transaction      Aggregation_transaction[]
+  CodeGenerationRequest        CodeGenerationRequest[]
+  CodeGenerationRequestHistory CodeGenerationRequestHistory[]
+  locations                    locations                      @relation(fields: [location_id], references: [id])
+  product                      product                        @relation(fields: [product_uuid], references: [id])
+  product_history              product_history                @relation(fields: [producthistory_uuid], references: [id])
+  batch_history                batch_history[]
+  printingStatus               printingStatus[]
+  reportFileFormat             reportFileFormat[]
+  sfdj0_codes                  sfdj0_codes[]
+  sfdj1_codes                  sfdj1_codes[]
+  sfdj5_codes                  sfdj5_codes[]
+}
+
+model batch_history {
+  id                  String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  batch_no            String
+  product_uuid        String          @db.Uuid
+  producthistory_uuid String          @db.Uuid
+  location_id         String          @db.Uuid
+  qty                 Int
+  batch_uuid          String          @db.Uuid
+  esign_status        esign_status    @default(null)
+  manufacturing_date  DateTime?
+  expiry_date         DateTime?
+  sent_to_cloud       Boolean         @default(false)
+  created_at          DateTime        @default(now()) @db.Timestamptz(6)
+  is_latest           Boolean         @default(true)
+  batch               batch           @relation(fields: [batch_uuid], references: [id])
+  locations           locations       @relation(fields: [location_id], references: [id])
+  product             product         @relation(fields: [product_uuid], references: [id])
+  product_history     product_history @relation(fields: [producthistory_uuid], references: [id])
+}
+
+model department_history {
+  id                   String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  department_uuid      String       @db.Uuid
+  department_id        String
+  department_name      String
+  is_location_required Boolean
+  esign_status         esign_status @default(null)
+  created_at           DateTime     @default(now()) @db.Timestamptz(6)
+  is_latest            Boolean      @default(true)
+  departments          departments  @relation(fields: [department_uuid], references: [id])
+}
+
+model departments {
+  id                   String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  department_id        String                @unique
+  department_name      String                @unique
+  is_location_required Boolean
+  esign_status         esign_status          @default(null)
+  created_at           DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime              @default(now()) @db.Timestamptz(6)
+  department_history   department_history[]
+  designation_history  designation_history[]
+  designations         designations[]
+  user_history         user_history[]
+  users                users[]
+}
+
+model designation_history {
+  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  designation_uuid String       @db.Uuid
+  designation_id   String
+  designation_name String
+  department_id    String       @db.Uuid
+  esign_status     esign_status @default(null)
+  created_at       DateTime     @default(now()) @db.Timestamptz(6)
+  is_latest        Boolean      @default(true)
+  departments      departments  @relation(fields: [department_id], references: [id], map: "designation_history_departments_fk")
+  designations     designations @relation(fields: [designation_uuid], references: [id], onDelete: Cascade)
+}
+
+model designations {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  designation_id      String                @unique
+  designation_name    String
+  department_id       String                @db.Uuid
+  esign_status        esign_status          @default(null)
+  api_ids             Int[]
+  screen_ids          Int[]
+  created_at          DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime              @default(now()) @db.Timestamptz(6)
+  designation_history designation_history[]
+  departments         departments           @relation(fields: [department_id], references: [id])
+  user_history        user_history[]
+  users               users[]
+
+  @@unique([designation_name, department_id])
+}
+
+model location_history {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  location_uuid  String       @db.Uuid
+  location_id    String
+  location_name  String
+  mfg_licence_no String
+  mfg_name       String?
+  address        String?
+  sent_to_cloud  Boolean      @default(false)
+  esign_status   esign_status @default(null)
+  is_latest      Boolean      @default(true)
+  created_at     DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime     @default(now()) @db.Timestamptz(6)
+  locations      locations    @relation(fields: [location_uuid], references: [id])
+}
+
+model locations {
+  id                              String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  location_id                     String                            @unique
+  location_name                   String                            @unique
+  mfg_licence_no                  String                            @unique
+  mfg_name                        String?
+  sent_to_cloud                   Boolean                           @default(false)
+  address                         String?
+  esign_status                    esign_status                      @default(approved)
+  created_at                      DateTime                          @default(now()) @db.Timestamptz(6)
+  updated_at                      DateTime                          @default(now()) @db.Timestamptz(6)
+  CodeGenerationRequest           CodeGenerationRequest[]
+  CodeGenerationRequestHistory    CodeGenerationRequestHistory[]
+  PrinterLineConfiguration        PrinterLineConfiguration[]
+  PrinterLineConfigurationHistory PrinterLineConfigurationHistory[]
+  area                            area[]
+  area_history                    area_history[]
+  batch                           batch[]
+  batch_history                   batch_history[]
+  location_history                location_history[]
+  sfdj0_codes                     sfdj0_codes[]
+  sfdj1_codes                     sfdj1_codes[]
+  sfdj5_codes                     sfdj5_codes[]
+  user_history                    user_history[]
+  users                           users[]
+}
+
+model printer_allocation {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  printer_ip   String   @unique
+  printer_port Int
+  mac_address  String   @unique
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime @db.Timestamptz(6)
+}
+
+model printingStatus {
+  id                       String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id               String                   @db.Uuid
+  batch_id                 String                   @db.Uuid
+  packing_hierarchy        String
+  line_id                  String                   @db.Uuid
+  status                   PrintingStatus
+  created_at               DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime                 @db.Timestamptz(6)
+  session                  String                   @default("")
+  batch                    batch                    @relation(fields: [batch_id], references: [id])
+  PrinterLineConfiguration PrinterLineConfiguration @relation(fields: [line_id], references: [id])
+  product                  product                  @relation(fields: [product_id], references: [id])
+}
+
+model product {
+  id                                String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id                        String                         @unique
+  product_name                      String
+  gtin                              String                         @unique
+  country_id                        String                         @db.Uuid
+  ndc                               String?                        @default("")
+  mrp                               Float?                         @default(0.0)
+  generic_name                      String                         @default("")
+  packaging_size                    String                         @db.VarChar(50)
+  firstLayer                        Int?
+  secondLayer                       Int?
+  thirdLayer                        Int?
+  productNumber                     Int?
+  productNumber_unit_of_measurement String?                        @db.Uuid
+  firstLayer_unit_of_measurement    String?                        @db.Uuid
+  secondLayer_unit_of_measurement   String?                        @db.Uuid
+  thirdLayer_unit_of_measurement    String?                        @db.Uuid
+  palletisation_applicable          Boolean                        @default(false)
+  pallet_size                       String?                        @db.VarChar(50)
+  pallet_size_unit_of_measurement   String?                        @db.Uuid
+  productNumber_print               Boolean                        @default(false)
+  firstLayer_print                  Boolean                        @default(false)
+  secondLayer_print                 Boolean                        @default(false)
+  thirdLayer_print                  Boolean                        @default(false)
+  productNumber_aggregation         Boolean                        @default(false)
+  firstLayer_aggregation            Boolean                        @default(false)
+  secondLayer_aggregation           Boolean                        @default(false)
+  thirdLayer_aggregation            Boolean                        @default(false)
+  generic_salt                      String                         @db.VarChar(255)
+  composition                       String                         @db.VarChar(255)
+  dosage                            String                         @db.VarChar(255)
+  remarks                           String                         @db.VarChar(255)
+  no_of_units_in_primary_level      String                         @db.VarChar(50)
+  unit_of_measurement               String?                        @db.Uuid
+  prefix                            String                         @db.VarChar(10)
+  packagingHierarchy                Int
+  company_uuid                      String                         @db.Uuid
+  label                             String                         @default("")
+  leaflet                           String                         @default("")
+  product_image                     String                         @default("")
+  esign_status                      esign_status                   @default(null)
+  updated_at                        DateTime                       @default(now()) @db.Timestamptz(6)
+  created_at                        DateTime                       @default(now()) @db.Timestamptz(6)
+  schedule_drug                     Boolean                        @default(false)
+  Aggregation_transaction           Aggregation_transaction[]
+  CodeGenerationRequest             CodeGenerationRequest[]
+  CodeGenerationRequestHistory      CodeGenerationRequestHistory[]
+  CodeGenerationSummary             CodeGenerationSummary[]
+  ProductGenerationId               ProductGenerationId[]
+  batch                             batch[]
+  batch_history                     batch_history[]
+  printingStatus                    printingStatus[]
+  Company                           Company                        @relation(fields: [company_uuid], references: [id])
+  CountryMaster                     CountryMaster                  @relation(fields: [country_id], references: [id])
+  product_history                   product_history[]
+  reportFileFormat                  reportFileFormat[]
+  sfdj0_codes                       sfdj0_codes[]
+  sfdj1_codes                       sfdj1_codes[]
+  sfdj5_codes                       sfdj5_codes[]
+
+  @@unique([product_id, gtin])
+}
+
+model product_history {
+  id                                String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_uuid                      String                         @db.Uuid
+  product_id                        String
+  product_name                      String
+  gtin                              String
+  country_id                        String                         @db.Uuid
+  ndc                               String?                        @default("")
+  mrp                               Float?                         @default(0.0)
+  generic_name                      String                         @default("")
+  packaging_size                    String                         @db.VarChar(50)
+  firstLayer                        Int?
+  secondLayer                       Int?
+  thirdLayer                        Int?
+  productNumber                     Int?
+  productNumber_unit_of_measurement String?                        @db.Uuid
+  firstLayer_unit_of_measurement    String?                        @db.Uuid
+  secondLayer_unit_of_measurement   String?                        @db.Uuid
+  thirdLayer_unit_of_measurement    String?                        @db.Uuid
+  palletisation_applicable          Boolean                        @default(false)
+  pallet_size                       String?                        @db.VarChar(50)
+  pallet_size_unit_of_measurement   String?                        @db.Uuid
+  productNumber_print               Boolean                        @default(false)
+  firstLayer_print                  Boolean                        @default(false)
+  secondLayer_print                 Boolean                        @default(false)
+  thirdLayer_print                  Boolean                        @default(false)
+  productNumber_aggregation         Boolean                        @default(false)
+  firstLayer_aggregation            Boolean                        @default(false)
+  secondLayer_aggregation           Boolean                        @default(false)
+  thirdLayer_aggregation            Boolean                        @default(false)
+  generic_salt                      String                         @db.VarChar(255)
+  composition                       String                         @db.VarChar(255)
+  dosage                            String                         @db.VarChar(255)
+  remarks                           String                         @db.VarChar(255)
+  no_of_units_in_primary_level      String                         @db.VarChar(50)
+  unit_of_measurement               String?                        @db.Uuid
+  prefix                            String                         @db.VarChar(10)
+  packagingHierarchy                Int
+  company_uuid                      String                         @db.Uuid
+  label                             String                         @default("")
+  leaflet                           String                         @default("")
+  product_image                     String                         @default("")
+  esign_status                      esign_status                   @default(null)
+  updated_at                        DateTime                       @default(now()) @db.Timestamptz(6)
+  created_at                        DateTime                       @default(now()) @db.Timestamptz(6)
+  is_latest                         Boolean                        @default(true)
+  schedule_drug                     Boolean                        @default(false)
+  Aggregation_transaction           Aggregation_transaction[]
+  CodeGenerationRequest             CodeGenerationRequest[]
+  CodeGenerationRequestHistory      CodeGenerationRequestHistory[]
+  CodeGenerationSummary             CodeGenerationSummary[]
+  ProductGenerationId               ProductGenerationId[]
+  batch                             batch[]
+  batch_history                     batch_history[]
+  Company                           Company                        @relation(fields: [company_uuid], references: [id])
+  CountryMaster                     CountryMaster                  @relation(fields: [country_id], references: [id])
+  product                           product                        @relation(fields: [product_uuid], references: [id])
+}
+
+model reportFileFormat {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no     Int
+  type          fileType
+  Extention     fileExtention
+  product_uuid  String        @db.Uuid
+  batch_uuid    String        @db.Uuid
+  report_format fileFormat
+  file_name     String        @unique
+  createdAt     DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime      @default(now()) @db.Timestamptz(6)
+  batch         batch         @relation(fields: [batch_uuid], references: [id])
+  product       product       @relation(fields: [product_uuid], references: [id])
+}
+
+model sfdj0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model sfdj1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model sfdj5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model superadmin_configuration {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  esign_status        Boolean  @default(false)
+  audit_logs          Boolean  @default(false)
+  codes_generated     Boolean  @default(false)
+  sent_to_cloud       Boolean  @default(false)
+  codes_type          String?
+  code_length         Int?
+  product_code_length Int?
+  crm_url             String   @default("")
+  totalCodeGenerated  Int      @default(0)
+  updated_at          DateTime @default(now()) @db.Timestamptz(6)
+  created_at          DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model uom {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  uom_name     String        @unique
+  esign_status esign_status  @default(null)
+  created_at   DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime      @default(now()) @db.Timestamptz(6)
+  uom_history  uom_history[]
+}
+
+model uom_history {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  uom_name     String
+  uom_uuid     String       @db.Uuid
+  esign_status esign_status @default(null)
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  is_latest    Boolean      @default(true)
+  uom          uom          @relation(fields: [uom_uuid], references: [id])
+}
+
+model user_history {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_uuid      String        @db.Uuid
+  user_id        String        @db.VarChar(50)
+  user_name      String        @db.VarChar(50)
+  email          String        @default("") @db.VarChar(255)
+  phone_number   String        @default("") @db.VarChar(20)
+  department_id  String?       @db.Uuid
+  designation_id String?       @db.Uuid
+  location_id    String?       @db.Uuid
+  profile_photo  String?       @db.VarChar(255)
+  is_active      Boolean
+  role           Role          @default(user)
+  esign_status   esign_status  @default(null)
+  accessibility  Json?
+  created_at     DateTime      @default(now()) @db.Timestamptz(6)
+  is_latest      Boolean       @default(true)
+  departments    departments?  @relation(fields: [department_id], references: [id])
+  designations   designations? @relation(fields: [designation_id], references: [id])
+  locations      locations?    @relation(fields: [location_id], references: [id])
+  users          users         @relation(fields: [user_uuid], references: [id], map: "user_history_users_fk")
+}
+
+model users {
+  id                         String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                    String                    @unique @db.VarChar(50)
+  user_name                  String                    @unique @db.VarChar(50)
+  email                      String                    @default("") @db.VarChar(255)
+  phone_number               String                    @default("") @db.VarChar(20)
+  password                   String                    @db.VarChar(255)
+  location_id                String?                   @db.Uuid
+  department_id              String?                   @db.Uuid
+  designation_id             String?                   @db.Uuid
+  profile_photo              String?                   @db.VarChar(255)
+  esign_status               esign_status              @default(null)
+  is_active                  Boolean                   @default(true)
+  role                       Role                      @default(user)
+  jwt_token                  String?                   @db.VarChar(1024)
+  last_activity_at           DateTime?                 @db.Timestamptz(6)
+  password_expires_on        DateTime                  @default(dbgenerated("(now() + '90 days'::interval)")) @db.Timestamptz(6)
+  old_passwords              String[]                  @default([]) @db.VarChar(255)
+  failed_login_attempt_count Int                       @default(0)
+  last_failed_login_at       DateTime?                 @db.Timestamptz(6)
+  account_locked_until_at    DateTime?                 @db.Timestamptz(6)
+  accessibility              Json?
+  created_at                 DateTime                  @default(now()) @db.Timestamptz(6)
+  updated_at                 DateTime                  @default(now()) @db.Timestamptz(6)
+  socket_id                  String                    @default("")
+  Aggregation_transaction    Aggregation_transaction[]
+  user_history               user_history[]
+  departments                departments?              @relation(fields: [department_id], references: [id])
+  designations               designations?             @relation(fields: [designation_id], references: [id])
+  locations                  locations?                @relation(fields: [location_id], references: [id])
+}
+
+enum Caution_logo {
+  red
+  blue
+  yellow
+  green
+  gray
+}
+
+enum CodeGenerationRequestStatus {
+  requested
+  inprogress
+  completed
+}
+
+enum Packaging_hierarchy {
+  one_layer
+  two_layer
+  three_layer
+  four_layer
+}
+
+enum PrinterLineConfigure {
+  enable
+  disable
+}
+
+enum PrintingStatus {
+  running
+  completed
+  stoped
+  pending
+}
+
+enum PrintingTechnology {
+  inkBased
+  ribbonBased
+}
+
+enum Protocol {
+  TCP
+  UDP
+}
+
+enum Role {
+  superadmin
+  admin
+  user
+}
+
+enum RoundingFactor {
+  roundup
+  rounddown
+  round
+}
+
+enum Status {
+  pending
+  complete
+}
+
+enum esign_status {
+  rejected
+  approved
+  pending
+  null
+}
+
+enum fileExtention {
+  pdf
+  xml
+}
+
+enum fileFormat {
+  pdfDetail
+  pdfRecord
+  productxml
+  batchxml
+  aggregatexml
+}
+
+enum fileType {
+  TSP
+  PRO
+  BAT
+  PDF
+  WIT
+}

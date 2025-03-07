@@ -1,0 +1,3 @@
+const EXTENSION_DIGIT = 3;
+
+export { EXTENSION_DIGIT };

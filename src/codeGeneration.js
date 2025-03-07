@@ -1,0 +1,479 @@
+// product code generation cron
+import prisma from './prismaClient.js';
+import {
+  createDynamicTable,
+  checkTableExists,
+  createRecordInCodeSummary,
+  updateRecordInCodeSummary,
+  updateStatusOfCodeRequest,
+  createRecordsInDynamicTable,
+  createSsccCodesTable,
+  createRecordsInSsccCodes,
+  createSsccCodeSummaryTable,
+  createRecordInSsccCodeSummary,
+  updateSsccCodeSummary,
+} from "./databaseUtils.js";
+import { EXTENSION_DIGIT } from './constant.js'
+
+let reGeneratingCodes = false;
+
+// Function to generate a six-digit alphanumeric code
+const generateCode = (type, length, index) => {
+  const alphaNum = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  if (type === "random") {
+    return Array.from({ length }, () =>
+      alphaNum.charAt(Math.floor(Math.random() * alphaNum.length))
+    ).join("");
+  } else if (type === "sequential") {
+    const sequential = index.toString(36).toUpperCase().padStart(length, "0");
+    return sequential;
+  }
+  return null;
+};
+
+const generateSkippedCode = async (reachUpTo, type, codeLength) => {
+  const codesCount = await prisma.codesGenerated.count();
+  console.log("Previous code count ", codesCount);
+  const remainingCodes = [];
+  for (let i = 1; i <= reachUpTo; i++) {
+    const code = generateCode(type, codeLength, i + codesCount);
+    code && remainingCodes.push({ code });
+  }
+  const generatedCodeRes = await prisma.codesGenerated.createMany({
+    data: remainingCodes,
+    skipDuplicates: true,
+  });
+  //   console.log("Generated Skipped Code", generatedCodeRes, remainingCodes);
+  return generatedCodeRes;
+};
+
+// Generate and insert codes in batches
+const generateMasterCodes = async () => {
+  console.log("Starting generate code job");
+  reGeneratingCodes = true;
+  const superConfig = await prisma.superadmin_configuration.findFirst({
+    select: {
+      id: true,
+      codes_type: true,
+      code_length: true,
+      product_code_length: true,
+      totalCodeGenerated: true,
+    },
+  });
+  try {
+    let lotSize = Number(process.env.LOT_SIZE);
+    let totalCodes = Number(process.env.TOTAL_CODES);
+    console.time("generateCodes");
+
+    if (
+      !superConfig.codes_type ||
+      (superConfig.codes_type !== "random" &&
+        superConfig.codes_type !== "sequential")
+    ) {
+      console.log(
+        "Invalid or missing type field. Type must be 'random' or 'sequential'."
+      );
+    }
+
+    // // Generate codes in batches
+    for (let i = 1; i <= totalCodes; i += lotSize) {
+      const codes = [];
+
+      for (let j = 0; j < lotSize && i + j <= totalCodes; j++) {
+        const code = generateCode(
+          superConfig.codes_type,
+          superConfig.code_length,
+          i + j
+        );
+        if (code) {
+          //   console.log("code", code, "id ", i+j);
+          codes.push({ code: code });
+        }
+      }
+
+      const result = await prisma.codesGenerated
+        .createMany({
+          data: codes,
+          skipDuplicates: true,
+        })
+        .catch((error) => {
+          console.log("Error to generate codes ", error);
+        });
+
+      if (result.count != lotSize) {
+        console.log("Batch not generated ", result);
+        let skipped = lotSize - result.count;
+        let archived = result.count;
+        while (lotSize !== archived) {
+          console.log(`skipped ${skipped} AND archived ${archived} ${lotSize}`);
+          const generated = await generateSkippedCode(
+            skipped,
+            superConfig.codes_type,
+            superConfig.code_length
+          );
+          skipped = skipped - generated.count;
+          archived += generated.count;
+        }
+      } else {
+        console.log("Batch generated successfully ", result);
+      }
+    }
+
+    reGeneratingCodes = false;
+    await prisma.superadmin_configuration.update({
+      where: {
+        id: superConfig.id,
+      },
+      data: {
+        totalCodeGenerated: superConfig.totalCodeGenerated + totalCodes,
+      },
+    });
+    console.timeEnd("generateCodes");
+  } catch (err) {
+    console.error("Error while updating superadmin configuration:", err);
+    reGeneratingCodes = false;
+  }
+};
+
+const calculateGtinCheckDigit = (input) => {
+  let sum = 0;
+  for (let i = 0; i < 13; i++) {
+    const digit = parseInt(input[i]);
+    sum += (i + 1) % 2 === 0 ? digit : digit * 3;
+  }
+  const nearestMultipleOfTen = Math.ceil(sum / 10) * 10;
+  const checkDigit = nearestMultipleOfTen - sum;
+
+  console.log("checksum of ", input, " ==> ", checkDigit);
+  return checkDigit;
+};
+
+const getCountryCode = async (countryCode, product, batch, level) => {
+  const elements =
+    countryCode.split("/").length > 1
+      ? countryCode.split("/")
+      : countryCode.split(" ");
+  const finalCountryCode = [];
+  console.log("element url ", elements);
+  for (const element of elements) {
+    if (!element) {
+      continue;
+    }
+    switch (element.trim()) {
+      case "registrationNo":
+        finalCountryCode.push(product.registration_no);
+        break;
+
+      case "NDC":
+        finalCountryCode.push(product.ndc);
+        break;
+
+      case "GTIN": {
+        const lastDigit = calculateGtinCheckDigit(`${level}${product.gtin}`);
+        finalCountryCode.push(`${level}${product.gtin}${lastDigit}`);
+        break;
+      }
+
+      case "batchNo":
+        finalCountryCode.push(batch.batch_no);
+        break;
+
+      case "manufacturingDate": {
+        const date = new Date(batch.manufacturing_date);
+        const formattedDate = `${date
+          .getFullYear()
+          .toString()
+          .slice(2)}${String(date.getMonth() + 1).padStart(2, "0")}${date
+          .getDate()
+          .toString()
+          .padStart(2, "0")}`;
+        finalCountryCode.push(formattedDate);
+        break;
+      }
+
+      case "expiryDate": {
+        const date = new Date(batch.expiry_date);
+        const formattedDate = `${date
+          .getFullYear()
+          .toString()
+          .slice(2)}${String(date.getMonth() + 1).padStart(2, "0")}${date
+          .getDate()
+          .toString()
+          .padStart(2, "0")}`;
+        finalCountryCode.push(formattedDate);
+        break;
+      }
+
+      case "<FNC>":
+        finalCountryCode.push(String.fromCharCode(29));
+        break;
+
+      case "CRMURL":
+        const superAdminConfigureData =
+          await prisma.superadmin_configuration.findFirst({});
+        console.log(superAdminConfigureData);
+        finalCountryCode.push(superAdminConfigureData.crm_url);
+        break;
+
+      default:
+        finalCountryCode.push(element.trim());
+        break;
+    }
+  }
+  console.log("final url ", finalCountryCode);
+  return countryCode.split("/").length > 1
+    ? finalCountryCode.join("/")
+    : finalCountryCode.join("");
+};
+
+const calculateSsccCheckDigit = (input) => {
+  let sum = 0;
+  for (let i = 0; i < 17; i++) {
+    const digit = parseInt(input[i]);
+    sum += (i + 1) % 2 === 0 ? digit : digit * 3;
+  }
+  const nearestMultipleOfTen = Math.ceil(sum / 10) * 10;
+  const checkDigit = nearestMultipleOfTen - sum;
+
+  // console.log("checksum of ", input, " ==> ",  checkDigit);
+  return checkDigit;
+};
+
+const generateSsccCode = async (data) => {
+  console.log("Generate sscc codes data ", data);
+
+  const exists = await checkTableExists("sscc_codes");
+  !exists && (await createSsccCodesTable());
+  const summaryExists = await checkTableExists("sscc_code_summary");
+  !summaryExists && (await createSsccCodeSummaryTable());
+
+  let lastGenerated = await prisma.$queryRawUnsafe(
+    `SELECT SUM(last_generated) AS max_last_generated FROM "sscc_code_summary"`
+  );
+  console.log("Last generated 5 | 6 ", lastGenerated);
+  lastGenerated = lastGenerated[0].max_last_generated
+    ? parseInt(lastGenerated[0].max_last_generated.toString().replace("n", ""))
+    : 0;
+  const codes = [];
+  for (let i = 1; i <= data.no_of_codes; i++) {
+    const SIXTEEN_CHAR =
+      parseInt(data.prefix.padEnd(16, 0)) + (lastGenerated + i);
+    const calculatedCheckDigit = calculateSsccCheckDigit(
+      `${EXTENSION_DIGIT}${SIXTEEN_CHAR}`
+    );
+    const sscc_code = `${EXTENSION_DIGIT}${SIXTEEN_CHAR}${calculatedCheckDigit}`;
+    console.log(`${lastGenerated + i} = ${sscc_code}`);
+    codes.push([
+      sscc_code,
+      data.pack_level,
+      data.product_id,
+      data.batch_id,
+      data.product_history_id,
+      data.location_id,
+      data.code_gen_id,
+    ]);
+  }
+  // console.log("Finaly data write to db ", codes);
+  // Bulk insert
+  for (let i = 0; i < codes.length; i += 1000) {
+    const chunk = codes.slice(i, i + 1000);
+    await createRecordsInSsccCodes(chunk);
+  }
+  await updateStatusOfCodeRequest(data.code_gen_id, "completed");
+
+  const recordExists = await prisma.$queryRawUnsafe(
+    `SELECT * FROM "sscc_code_summary" WHERE product_id = '${data.product_id}' AND packaging_hierarchy = ${data.pack_level}`
+  );
+  console.log("Record exists ", recordExists);
+  if (recordExists.length > 0) {
+    await updateSsccCodeSummary({
+      product_id: data.product_id,
+      batch_id: data.batch_id,
+      packaging_hierarchy: data.pack_level,
+      no_of_codes: parseInt(data.no_of_codes),
+    });
+  } else {
+    await createRecordInSsccCodeSummary({
+      product_id: data.product_id,
+      batch_id: data.batch_id,
+      product_history_id: data.product_history_id,
+      product_name: data.product_name,
+      packaging_hierarchy: data.pack_level,
+      no_of_codes: parseInt(data.no_of_codes),
+    });
+  }
+};
+
+// Reusable function for processing requested codes
+const processRequestedCodes = async () => {
+  console.time("data");
+  try {
+    console.log("Cron job started: Processing code generation requests...");
+
+    const codeGenerationRequests = await prisma.codeGenerationRequest.findMany({
+      where: { status: "requested" },
+      orderBy: { created_at: "asc" },
+    });
+
+    for (const element of codeGenerationRequests) {
+      console.log("Record requested ", element);
+      const product = await prisma.product.findFirst({
+        where: { id: element.product_id },
+      });
+      const batch = await prisma.batch.findFirst({
+        where: { id: element.batch_id },
+      });
+
+      if (!product || !batch) {
+        console.log("Product or Batch not found for request ID:", element.id);
+        continue;
+      }
+
+      const LEVEL = element.packaging_hierarchy.replace("level", "");
+      if (parseInt(LEVEL) === 5 || parseInt(LEVEL) === 6) {
+        console.log("Skipping level ", LEVEL);
+        const data = {
+          product_id: product.id,
+          product_name: product.product_name,
+          batch_id: batch.id,
+          product_history_id: batch.producthistory_uuid,
+          location_id: batch.location_id,
+          code_gen_id: element.id,
+          prefix: product.prefix,
+          no_of_codes: element.no_of_codes,
+          pack_level: parseInt(LEVEL),
+          packaging_hierarchy: element.packaging_hierarchy,
+          generation_id: element.generation_id,
+        };
+        await generateSsccCode(data);
+        console.log("Sscc code generated for ", LEVEL);
+      } else {
+        const tableName =
+          `${element.generation_id}${LEVEL}_CODES`.toLowerCase();
+        const exists = await checkTableExists(tableName);
+        console.log("Table ", tableName, "exists ", exists);
+
+        const countryCodeStructure = await prisma.countryMaster.findFirst({
+          where: { id: product.country_id },
+          select: { codeStructure: true },
+        });
+        if (exists) {
+          const skipped = await prisma.codeGenerationSummary.findFirst({
+            where: {
+              product_id: element.product_id,
+              packaging_hierarchy: LEVEL,
+              generation_id: element.generation_id,
+            },
+            select: { last_generated: true },
+          });
+
+          const codes = await prisma.codesGenerated.findMany({
+            skip: skipped?.last_generated
+              ? parseInt(skipped?.last_generated)
+              : 0,
+            take: parseInt(element.no_of_codes),
+          });
+
+          await updateStatusOfCodeRequest(element.id, "inprogress");
+          const countryCode = await getCountryCode(
+            countryCodeStructure.codeStructure,
+            product,
+            batch,
+            LEVEL
+          );
+          // Prepare data array
+          const data = codes.map((code) => {
+            const uniqueId = `${element.generation_id}${LEVEL}${code.code}`;
+            return [
+              product.id,
+              batch.id,
+              batch.location_id,
+              element.id,
+              uniqueId,
+              countryCode.replaceAll("uniqueCode", uniqueId),
+            ];
+          });
+          // Bulk insert
+          for (let i = 0; i < data.length; i += 1000) {
+            const chunk = data.slice(i, i + 1000);
+            await createRecordsInDynamicTable(tableName, chunk);
+          }
+          await updateStatusOfCodeRequest(element.id, "completed");
+          await updateRecordInCodeSummary({
+            product_id: product.id,
+            product_name: product.product_name,
+            packaging_hierarchy: element.packaging_hierarchy,
+            generation_id: element.generation_id,
+            generated: codes.length,
+          });
+        } else {
+          console.log(`Table ${tableName} does not exist. Creating...`);
+          await createDynamicTable(tableName);
+
+          const codes = await prisma.codesGenerated.findMany({
+            skip: 0,
+            take: parseInt(element.no_of_codes),
+          });
+          console.log("Total codes fetch ", codes.length);
+          await updateStatusOfCodeRequest(element.id, "inprogress");
+          // Prepare data array
+          let countryCode = await getCountryCode(
+            countryCodeStructure.codeStructure,
+            product,
+            batch,
+            LEVEL
+          );
+          const data = codes.map((code) => {
+            const uniqueId = `${element.generation_id}${LEVEL}${code.code}`;
+            return [
+              product.id,
+              batch.id,
+              batch.location_id,
+              element.id,
+              uniqueId,
+              countryCode.replaceAll("uniqueCode", uniqueId),
+            ];
+          });
+          // Bulk insert
+          for (let i = 0; i < data.length; i += 1000) {
+            const chunk = data.slice(i, i + 1000);
+            await createRecordsInDynamicTable(tableName, chunk);
+          }
+          await updateStatusOfCodeRequest(element.id, "completed");
+          await createRecordInCodeSummary({
+            product_id: product.id,
+            product_name: product.product_name,
+            packaging_hierarchy: element.packaging_hierarchy,
+            generation_id: element.generation_id,
+            no_of_codes: element.no_of_codes,
+          });
+        }
+      }
+    }
+    console.timeEnd("data");
+    console.log("Cron job completed: Code generation requests processed.");
+  } catch (error) {
+    console.error("Error processing code generation requests:", error);
+  }
+};
+
+const checkMasterCodeLimit = async () => {
+  const superConfig = await prisma.superadmin_configuration.findFirst({
+    select: {
+      totalCodeGenerated: true,
+    },
+  });
+  console.log("Total codes ", superConfig.totalCodeGenerated);
+  const nearCodesLimit = (parseInt(superConfig.totalCodeGenerated) * 80) / 100;
+  const aboveCodesLimit = await prisma.$executeRawUnsafe(
+    `SELECT * FROM "CodeGenerationSummary" WHERE CAST(last_generated AS INTEGER) >= ${nearCodesLimit} LIMIT 1;`
+  );
+
+  console.log("Near 80% ", aboveCodesLimit);
+  if (aboveCodesLimit >= 1 && !reGeneratingCodes) {
+    generateMasterCodes();
+  }
+};
+
+export { processRequestedCodes, checkMasterCodeLimit };
+

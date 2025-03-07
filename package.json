@@ -1,0 +1,21 @@
+{
+  "name": "codegeneration",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "nodemon index.js"
+  },
+  "keywords": [],
+  "author": "Keyur Chanchad",
+  "description": "This is code generation micro-service",
+  "dependencies": {
+    "@prisma/client": "^6.4.1",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9",
+    "prisma": "^6.4.1"
+  },
+  "type": "module"
+}
