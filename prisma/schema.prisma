@@ -8,23 +8,22 @@ datasource db {
 }
 
 model Aggregation_transaction {
-  id                  String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  transaction_id      String          @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  product_id          String          @db.Uuid
-  batch_id            String          @db.Uuid
-  user_id             String          @db.Uuid
-  aggregation_count   Int             @default(0)
+  id                  String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transaction_id      String        @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id          String        @db.Uuid
+  batch_id            String        @db.Uuid
+  user_id             String        @db.Uuid
+  aggregation_count   Int           @default(0)
   product_gen_id      String
   packagingHierarchy  Int
-  producthistory_uuid String          @db.Uuid
-  status              Status          @default(pending)
-  created_at          DateTime        @default(now()) @db.Timestamptz(6)
-  updated_at          DateTime        @db.Timestamptz(6)
-  batch               batch           @relation(fields: [batch_id], references: [id])
-  product             product         @relation(fields: [product_id], references: [id])
-  product_history     product_history @relation(fields: [producthistory_uuid], references: [id])
-  users               users           @relation(fields: [user_id], references: [id])
-  Scanned_code        Scanned_code[]
+  producthistory_uuid String        @db.Uuid
+  status              Status        @default(pending)
+  created_at          DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime      @db.Timestamptz(6)
+  batch               batch         @relation(fields: [batch_id], references: [id])
+  product             product       @relation(fields: [product_id], references: [id])
+  users               users         @relation(fields: [user_id], references: [id])
+  Scanned_code        Scanned_code?
 }
 
 model ApiRegistry {
@@ -66,11 +65,14 @@ model CodeGenerationRequest {
   status                       CodeGenerationRequestStatus    @default(requested)
   batch_quantity               String
   product_historyId            String?                        @db.Uuid
+  esign_status                 esign_status                   @default(null)
+  updated_at                   DateTime                       @default(now()) @db.Timestamptz(6)
   batch                        batch                          @relation(fields: [batch_id], references: [id])
   locations                    locations                      @relation(fields: [location_id], references: [id])
   product_history              product_history?               @relation(fields: [product_historyId], references: [id])
   product                      product                        @relation(fields: [product_id], references: [id])
   CodeGenerationRequestHistory CodeGenerationRequestHistory[]
+  sscc_codes                   sscc_codes[]
 }
 
 model CodeGenerationRequestHistory {
@@ -88,6 +90,8 @@ model CodeGenerationRequestHistory {
   batch_quantity             String
   is_latest                  Boolean                     @default(true)
   product_historyId          String?                     @db.Uuid
+  esign_status               esign_status?               @default(null)
+  updated_at                 DateTime                    @default(now()) @db.Timestamptz(6)
   batch                      batch                       @relation(fields: [batch_id], references: [id])
   CodeGenerationRequest      CodeGenerationRequest       @relation(fields: [codeGenerationRequest_uuid], references: [id])
   locations                  locations                   @relation(fields: [location_id], references: [id])
@@ -103,7 +107,7 @@ model CodeGenerationSummary {
   packaging_hierarchy String
   last_generated      String
   created_at          DateTime         @default(now()) @db.Timestamptz(6)
-  updated_at          DateTime         @db.Timestamptz(6)
+  updated_at          DateTime         @updatedAt @db.Timestamptz(6)
   product_historyId   String?          @db.Uuid
   product_history     product_history? @relation(fields: [product_historyId], references: [id])
   product             product          @relation(fields: [product_id], references: [id])
@@ -338,13 +342,14 @@ model ProductGenerationId {
 
 model Scanned_code {
   id                      String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  transaction_id          String                  @db.Uuid
+  transaction_id          String                  @unique @db.Uuid
   scanned_0_codes         Json[]                  @default([])
   scanned_1_codes         Json[]                  @default([])
   scanned_2_codes         Json[]                  @default([])
   scanned_3_codes         Json[]                  @default([])
   scanned_5_codes         Json[]                  @default([])
-  Aggregation_transaction Aggregation_transaction @relation(fields: [transaction_id], references: [id])
+  status                  Status                  @default(pending)
+  Aggregation_transaction Aggregation_transaction @relation(fields: [transaction_id], references: [transaction_id])
 }
 
 model ScreenRegistry {
@@ -436,18 +441,117 @@ model batch {
   updated_at                   DateTime                       @default(now()) @db.Timestamptz(6)
   created_at                   DateTime                       @default(now()) @db.Timestamptz(6)
   sent_to_cloud                Boolean                        @default(false)
+  isBatchEnd                   Boolean                        @default(false)
   Aggregation_transaction      Aggregation_transaction[]
   CodeGenerationRequest        CodeGenerationRequest[]
   CodeGenerationRequestHistory CodeGenerationRequestHistory[]
+  avkq0_codes                  avkq0_codes[]
+  avkq1_codes                  avkq1_codes[]
+  avkq5_codes                  avkq5_codes[]
   locations                    locations                      @relation(fields: [location_id], references: [id])
   product                      product                        @relation(fields: [product_uuid], references: [id])
   product_history              product_history                @relation(fields: [producthistory_uuid], references: [id])
   batch_history                batch_history[]
+  cwsb0_codes                  cwsb0_codes[]
+  cwsb1_codes                  cwsb1_codes[]
+  cwsb5_codes                  cwsb5_codes[]
+  epuj0_codes                  epuj0_codes[]
+  epuj1_codes                  epuj1_codes[]
+  epuj5_codes                  epuj5_codes[]
+  fbos0_codes                  fbos0_codes[]
+  fbos1_codes                  fbos1_codes[]
+  fbos5_codes                  fbos5_codes[]
+  fpyf0_codes                  fpyf0_codes[]
+  fpyf1_codes                  fpyf1_codes[]
+  fpyf2_codes                  fpyf2_codes[]
+  fpyf5_codes                  fpyf5_codes[]
+  fvwb0_codes                  fvwb0_codes[]
+  fvwb1_codes                  fvwb1_codes[]
+  fvwb5_codes                  fvwb5_codes[]
+  gigf0_codes                  gigf0_codes[]
+  gigf1_codes                  gigf1_codes[]
+  gigf5_codes                  gigf5_codes[]
+  gzru0_codes                  gzru0_codes[]
+  gzru1_codes                  gzru1_codes[]
+  gzru5_codes                  gzru5_codes[]
+  hqdj0_codes                  hqdj0_codes[]
+  hqdj1_codes                  hqdj1_codes[]
+  hyst0_codes                  hyst0_codes[]
+  hyst1_codes                  hyst1_codes[]
+  hyst5_codes                  hyst5_codes[]
+  iuok0_codes                  iuok0_codes[]
+  iuok1_codes                  iuok1_codes[]
+  iuok5_codes                  iuok5_codes[]
+  jwqo0_codes                  jwqo0_codes[]
+  jwqo1_codes                  jwqo1_codes[]
+  jwqo5_codes                  jwqo5_codes[]
+  lqjf0_codes                  lqjf0_codes[]
+  lqjf1_codes                  lqjf1_codes[]
+  ltli0_codes                  ltli0_codes[]
+  ltli1_codes                  ltli1_codes[]
+  ltli5_codes                  ltli5_codes[]
+  mvcr0_codes                  mvcr0_codes[]
+  mvcr1_codes                  mvcr1_codes[]
+  mvcr5_codes                  mvcr5_codes[]
+  nmko0_codes                  nmko0_codes[]
+  nmko1_codes                  nmko1_codes[]
+  nmko5_codes                  nmko5_codes[]
+  nyaw0_codes                  nyaw0_codes[]
+  nyaw1_codes                  nyaw1_codes[]
+  nyaw5_codes                  nyaw5_codes[]
+  nzqy0_codes                  nzqy0_codes[]
+  nzqy1_codes                  nzqy1_codes[]
+  nzqy5_codes                  nzqy5_codes[]
+  oqly0_codes                  oqly0_codes[]
+  oqly1_codes                  oqly1_codes[]
+  oqly5_codes                  oqly5_codes[]
+  oywh0_codes                  oywh0_codes[]
+  oywh1_codes                  oywh1_codes[]
+  oywh5_codes                  oywh5_codes[]
+  pajz0_codes                  pajz0_codes[]
+  pajz1_codes                  pajz1_codes[]
+  pajz5_codes                  pajz5_codes[]
   printingStatus               printingStatus[]
   reportFileFormat             reportFileFormat[]
+  rlex0_codes                  rlex0_codes[]
+  rlex1_codes                  rlex1_codes[]
+  rlex5_codes                  rlex5_codes[]
   sfdj0_codes                  sfdj0_codes[]
   sfdj1_codes                  sfdj1_codes[]
   sfdj5_codes                  sfdj5_codes[]
+  sphn0_codes                  sphn0_codes[]
+  sphn1_codes                  sphn1_codes[]
+  sphn5_codes                  sphn5_codes[]
+  sppq0_codes                  sppq0_codes[]
+  sppq1_codes                  sppq1_codes[]
+  sppq5_codes                  sppq5_codes[]
+  sscc_code_summary            sscc_code_summary[]
+  sscc_codes                   sscc_codes[]
+  tkzp0_codes                  tkzp0_codes[]
+  tkzp1_codes                  tkzp1_codes[]
+  vzth0_codes                  vzth0_codes[]
+  vzth1_codes                  vzth1_codes[]
+  vzth5_codes                  vzth5_codes[]
+  wuod0_codes                  wuod0_codes[]
+  wuod1_codes                  wuod1_codes[]
+  wuod5_codes                  wuod5_codes[]
+  yvrb0_codes                  yvrb0_codes[]
+  yvrb1_codes                  yvrb1_codes[]
+  yvrb5_codes                  yvrb5_codes[]
+  zbhh0_codes                  zbhh0_codes[]
+  zbhh1_codes                  zbhh1_codes[]
+  zbhh5_codes                  zbhh5_codes[]
+  zbrh0_codes                  zbrh0_codes[]
+  zbrh1_codes                  zbrh1_codes[]
+  zbrh5_codes                  zbrh5_codes[]
+  zdld0_codes                  zdld0_codes[]
+  zdld1_codes                  zdld1_codes[]
+  zdld5_codes                  zdld5_codes[]
+  zyys0_codes                  zyys0_codes[]
+  zyys1_codes                  zyys1_codes[]
+  zyys5_codes                  zyys5_codes[]
+
+  @@unique([batch_no, producthistory_uuid, location_id])
 }
 
 model batch_history {
@@ -541,34 +645,147 @@ model location_history {
   is_latest      Boolean      @default(true)
   created_at     DateTime     @default(now()) @db.Timestamptz(6)
   updated_at     DateTime     @default(now()) @db.Timestamptz(6)
+  location_type  locationType @default(CUSTOMER)
   locations      locations    @relation(fields: [location_uuid], references: [id])
 }
 
 model locations {
-  id                              String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  location_id                     String                            @unique
-  location_name                   String                            @unique
-  mfg_licence_no                  String                            @unique
-  mfg_name                        String?
-  sent_to_cloud                   Boolean                           @default(false)
-  address                         String?
-  esign_status                    esign_status                      @default(approved)
-  created_at                      DateTime                          @default(now()) @db.Timestamptz(6)
-  updated_at                      DateTime                          @default(now()) @db.Timestamptz(6)
-  CodeGenerationRequest           CodeGenerationRequest[]
-  CodeGenerationRequestHistory    CodeGenerationRequestHistory[]
-  PrinterLineConfiguration        PrinterLineConfiguration[]
-  PrinterLineConfigurationHistory PrinterLineConfigurationHistory[]
-  area                            area[]
-  area_history                    area_history[]
-  batch                           batch[]
-  batch_history                   batch_history[]
-  location_history                location_history[]
-  sfdj0_codes                     sfdj0_codes[]
-  sfdj1_codes                     sfdj1_codes[]
-  sfdj5_codes                     sfdj5_codes[]
-  user_history                    user_history[]
-  users                           users[]
+  id                                                                  String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  location_id                                                         String                            @unique
+  location_name                                                       String                            @unique
+  mfg_licence_no                                                      String                            @unique
+  mfg_name                                                            String?
+  sent_to_cloud                                                       Boolean                           @default(false)
+  address                                                             String?
+  esign_status                                                        esign_status                      @default(approved)
+  created_at                                                          DateTime                          @default(now()) @db.Timestamptz(6)
+  updated_at                                                          DateTime                          @default(now()) @db.Timestamptz(6)
+  location_type                                                       locationType                      @default(CUSTOMER)
+  CodeGenerationRequest                                               CodeGenerationRequest[]
+  CodeGenerationRequestHistory                                        CodeGenerationRequestHistory[]
+  PrinterLineConfiguration                                            PrinterLineConfiguration[]
+  PrinterLineConfigurationHistory                                     PrinterLineConfigurationHistory[]
+  area                                                                area[]
+  area_history                                                        area_history[]
+  avkq0_codes                                                         avkq0_codes[]
+  avkq1_codes                                                         avkq1_codes[]
+  avkq5_codes                                                         avkq5_codes[]
+  batch                                                               batch[]
+  batch_history                                                       batch_history[]
+  cwsb0_codes                                                         cwsb0_codes[]
+  cwsb1_codes                                                         cwsb1_codes[]
+  cwsb5_codes                                                         cwsb5_codes[]
+  epuj0_codes                                                         epuj0_codes[]
+  epuj1_codes                                                         epuj1_codes[]
+  epuj5_codes                                                         epuj5_codes[]
+  fbos0_codes                                                         fbos0_codes[]
+  fbos1_codes                                                         fbos1_codes[]
+  fbos5_codes                                                         fbos5_codes[]
+  fpyf0_codes                                                         fpyf0_codes[]
+  fpyf1_codes                                                         fpyf1_codes[]
+  fpyf2_codes                                                         fpyf2_codes[]
+  fpyf5_codes                                                         fpyf5_codes[]
+  fvwb0_codes                                                         fvwb0_codes[]
+  fvwb1_codes                                                         fvwb1_codes[]
+  fvwb5_codes                                                         fvwb5_codes[]
+  gigf0_codes                                                         gigf0_codes[]
+  gigf1_codes                                                         gigf1_codes[]
+  gigf5_codes                                                         gigf5_codes[]
+  gzru0_codes                                                         gzru0_codes[]
+  gzru1_codes                                                         gzru1_codes[]
+  gzru5_codes                                                         gzru5_codes[]
+  hqdj0_codes                                                         hqdj0_codes[]
+  hqdj1_codes                                                         hqdj1_codes[]
+  hyst0_codes                                                         hyst0_codes[]
+  hyst1_codes                                                         hyst1_codes[]
+  hyst5_codes                                                         hyst5_codes[]
+  iuok0_codes                                                         iuok0_codes[]
+  iuok1_codes                                                         iuok1_codes[]
+  iuok5_codes                                                         iuok5_codes[]
+  jwqo0_codes                                                         jwqo0_codes[]
+  jwqo1_codes                                                         jwqo1_codes[]
+  jwqo5_codes                                                         jwqo5_codes[]
+  location_history                                                    location_history[]
+  lqjf0_codes                                                         lqjf0_codes[]
+  lqjf1_codes                                                         lqjf1_codes[]
+  ltli0_codes                                                         ltli0_codes[]
+  ltli1_codes                                                         ltli1_codes[]
+  ltli5_codes                                                         ltli5_codes[]
+  mvcr0_codes                                                         mvcr0_codes[]
+  mvcr1_codes                                                         mvcr1_codes[]
+  mvcr5_codes                                                         mvcr5_codes[]
+  nmko0_codes                                                         nmko0_codes[]
+  nmko1_codes                                                         nmko1_codes[]
+  nmko5_codes                                                         nmko5_codes[]
+  nyaw0_codes                                                         nyaw0_codes[]
+  nyaw1_codes                                                         nyaw1_codes[]
+  nyaw5_codes                                                         nyaw5_codes[]
+  nzqy0_codes                                                         nzqy0_codes[]
+  nzqy1_codes                                                         nzqy1_codes[]
+  nzqy5_codes                                                         nzqy5_codes[]
+  oqly0_codes                                                         oqly0_codes[]
+  oqly1_codes                                                         oqly1_codes[]
+  oqly5_codes                                                         oqly5_codes[]
+  oywh0_codes                                                         oywh0_codes[]
+  oywh1_codes                                                         oywh1_codes[]
+  oywh5_codes                                                         oywh5_codes[]
+  pajz0_codes                                                         pajz0_codes[]
+  pajz1_codes                                                         pajz1_codes[]
+  pajz5_codes                                                         pajz5_codes[]
+  purchaseOrder_purchaseOrder_fromTolocations                         purchaseOrder[]                   @relation("purchaseOrder_fromTolocations")
+  purchaseOrder_purchaseOrder_toTolocations                           purchaseOrder[]                   @relation("purchaseOrder_toTolocations")
+  purchaseOrderHistory_purchaseOrderHistory_fromTolocations           purchaseOrderHistory[]            @relation("purchaseOrderHistory_fromTolocations")
+  purchaseOrderHistory_purchaseOrderHistory_toTolocations             purchaseOrderHistory[]            @relation("purchaseOrderHistory_toTolocations")
+  rlex0_codes                                                         rlex0_codes[]
+  rlex1_codes                                                         rlex1_codes[]
+  rlex5_codes                                                         rlex5_codes[]
+  salesOrder_salesOrder_fromTolocations                               salesOrder[]                      @relation("salesOrder_fromTolocations")
+  salesOrder_salesOrder_toTolocations                                 salesOrder[]                      @relation("salesOrder_toTolocations")
+  salesOrderHistory_salesOrderHistory_fromTolocations                 salesOrderHistory[]               @relation("salesOrderHistory_fromTolocations")
+  salesOrderHistory_salesOrderHistory_toTolocations                   salesOrderHistory[]               @relation("salesOrderHistory_toTolocations")
+  salesReturn_salesReturn_fromTolocations                             salesReturn[]                     @relation("salesReturn_fromTolocations")
+  salesReturn_salesReturn_toTolocations                               salesReturn[]                     @relation("salesReturn_toTolocations")
+  salesReturnHistory_salesReturnHistory_fromTolocations               salesReturnHistory[]              @relation("salesReturnHistory_fromTolocations")
+  salesReturnHistory_salesReturnHistory_toTolocations                 salesReturnHistory[]              @relation("salesReturnHistory_toTolocations")
+  sfdj0_codes                                                         sfdj0_codes[]
+  sfdj1_codes                                                         sfdj1_codes[]
+  sfdj5_codes                                                         sfdj5_codes[]
+  sphn0_codes                                                         sphn0_codes[]
+  sphn1_codes                                                         sphn1_codes[]
+  sphn5_codes                                                         sphn5_codes[]
+  sppq0_codes                                                         sppq0_codes[]
+  sppq1_codes                                                         sppq1_codes[]
+  sppq5_codes                                                         sppq5_codes[]
+  sscc_codes                                                          sscc_codes[]
+  stockTransferOrder_stockTransferOrder_fromTolocations               stockTransferOrder[]              @relation("stockTransferOrder_fromTolocations")
+  stockTransferOrder_stockTransferOrder_toTolocations                 stockTransferOrder[]              @relation("stockTransferOrder_toTolocations")
+  stockTransferOrderHistory_stockTransferOrderHistory_fromTolocations stockTransferOrderHistory[]       @relation("stockTransferOrderHistory_fromTolocations")
+  stockTransferOrderHistory_stockTransferOrderHistory_toTolocations   stockTransferOrderHistory[]       @relation("stockTransferOrderHistory_toTolocations")
+  tkzp0_codes                                                         tkzp0_codes[]
+  tkzp1_codes                                                         tkzp1_codes[]
+  user_history                                                        user_history[]
+  users                                                               users[]
+  vzth0_codes                                                         vzth0_codes[]
+  vzth1_codes                                                         vzth1_codes[]
+  vzth5_codes                                                         vzth5_codes[]
+  wuod0_codes                                                         wuod0_codes[]
+  wuod1_codes                                                         wuod1_codes[]
+  wuod5_codes                                                         wuod5_codes[]
+  yvrb0_codes                                                         yvrb0_codes[]
+  yvrb1_codes                                                         yvrb1_codes[]
+  yvrb5_codes                                                         yvrb5_codes[]
+  zbhh0_codes                                                         zbhh0_codes[]
+  zbhh1_codes                                                         zbhh1_codes[]
+  zbhh5_codes                                                         zbhh5_codes[]
+  zbrh0_codes                                                         zbrh0_codes[]
+  zbrh1_codes                                                         zbrh1_codes[]
+  zbrh5_codes                                                         zbrh5_codes[]
+  zdld0_codes                                                         zdld0_codes[]
+  zdld1_codes                                                         zdld1_codes[]
+  zdld5_codes                                                         zdld5_codes[]
+  zyys0_codes                                                         zyys0_codes[]
+  zyys1_codes                                                         zyys1_codes[]
+  zyys5_codes                                                         zyys5_codes[]
 }
 
 model printer_allocation {
@@ -588,7 +805,7 @@ model printingStatus {
   line_id                  String                   @db.Uuid
   status                   PrintingStatus
   created_at               DateTime                 @default(now()) @db.Timestamptz(6)
-  updated_at               DateTime                 @db.Timestamptz(6)
+  updated_at               DateTime                 @default(now()) @db.Timestamptz(6)
   session                  String                   @default("")
   batch                    batch                    @relation(fields: [batch_id], references: [id])
   PrinterLineConfiguration PrinterLineConfiguration @relation(fields: [line_id], references: [id])
@@ -645,16 +862,112 @@ model product {
   CodeGenerationRequestHistory      CodeGenerationRequestHistory[]
   CodeGenerationSummary             CodeGenerationSummary[]
   ProductGenerationId               ProductGenerationId[]
+  avkq0_codes                       avkq0_codes[]
+  avkq1_codes                       avkq1_codes[]
+  avkq5_codes                       avkq5_codes[]
   batch                             batch[]
   batch_history                     batch_history[]
+  cwsb0_codes                       cwsb0_codes[]
+  cwsb1_codes                       cwsb1_codes[]
+  cwsb5_codes                       cwsb5_codes[]
+  epuj0_codes                       epuj0_codes[]
+  epuj1_codes                       epuj1_codes[]
+  epuj5_codes                       epuj5_codes[]
+  fbos0_codes                       fbos0_codes[]
+  fbos1_codes                       fbos1_codes[]
+  fbos5_codes                       fbos5_codes[]
+  fpyf0_codes                       fpyf0_codes[]
+  fpyf1_codes                       fpyf1_codes[]
+  fpyf2_codes                       fpyf2_codes[]
+  fpyf5_codes                       fpyf5_codes[]
+  fvwb0_codes                       fvwb0_codes[]
+  fvwb1_codes                       fvwb1_codes[]
+  fvwb5_codes                       fvwb5_codes[]
+  gigf0_codes                       gigf0_codes[]
+  gigf1_codes                       gigf1_codes[]
+  gigf5_codes                       gigf5_codes[]
+  gzru0_codes                       gzru0_codes[]
+  gzru1_codes                       gzru1_codes[]
+  gzru5_codes                       gzru5_codes[]
+  hqdj0_codes                       hqdj0_codes[]
+  hqdj1_codes                       hqdj1_codes[]
+  hyst0_codes                       hyst0_codes[]
+  hyst1_codes                       hyst1_codes[]
+  hyst5_codes                       hyst5_codes[]
+  iuok0_codes                       iuok0_codes[]
+  iuok1_codes                       iuok1_codes[]
+  iuok5_codes                       iuok5_codes[]
+  jwqo0_codes                       jwqo0_codes[]
+  jwqo1_codes                       jwqo1_codes[]
+  jwqo5_codes                       jwqo5_codes[]
+  lqjf0_codes                       lqjf0_codes[]
+  lqjf1_codes                       lqjf1_codes[]
+  ltli0_codes                       ltli0_codes[]
+  ltli1_codes                       ltli1_codes[]
+  ltli5_codes                       ltli5_codes[]
+  mvcr0_codes                       mvcr0_codes[]
+  mvcr1_codes                       mvcr1_codes[]
+  mvcr5_codes                       mvcr5_codes[]
+  nmko0_codes                       nmko0_codes[]
+  nmko1_codes                       nmko1_codes[]
+  nmko5_codes                       nmko5_codes[]
+  nyaw0_codes                       nyaw0_codes[]
+  nyaw1_codes                       nyaw1_codes[]
+  nyaw5_codes                       nyaw5_codes[]
+  nzqy0_codes                       nzqy0_codes[]
+  nzqy1_codes                       nzqy1_codes[]
+  nzqy5_codes                       nzqy5_codes[]
+  oqly0_codes                       oqly0_codes[]
+  oqly1_codes                       oqly1_codes[]
+  oqly5_codes                       oqly5_codes[]
+  oywh0_codes                       oywh0_codes[]
+  oywh1_codes                       oywh1_codes[]
+  oywh5_codes                       oywh5_codes[]
+  pajz0_codes                       pajz0_codes[]
+  pajz1_codes                       pajz1_codes[]
+  pajz5_codes                       pajz5_codes[]
   printingStatus                    printingStatus[]
   Company                           Company                        @relation(fields: [company_uuid], references: [id])
   CountryMaster                     CountryMaster                  @relation(fields: [country_id], references: [id])
   product_history                   product_history[]
   reportFileFormat                  reportFileFormat[]
+  rlex0_codes                       rlex0_codes[]
+  rlex1_codes                       rlex1_codes[]
+  rlex5_codes                       rlex5_codes[]
   sfdj0_codes                       sfdj0_codes[]
   sfdj1_codes                       sfdj1_codes[]
   sfdj5_codes                       sfdj5_codes[]
+  sphn0_codes                       sphn0_codes[]
+  sphn1_codes                       sphn1_codes[]
+  sphn5_codes                       sphn5_codes[]
+  sppq0_codes                       sppq0_codes[]
+  sppq1_codes                       sppq1_codes[]
+  sppq5_codes                       sppq5_codes[]
+  sscc_code_summary                 sscc_code_summary[]
+  sscc_codes                        sscc_codes[]
+  tkzp0_codes                       tkzp0_codes[]
+  tkzp1_codes                       tkzp1_codes[]
+  vzth0_codes                       vzth0_codes[]
+  vzth1_codes                       vzth1_codes[]
+  vzth5_codes                       vzth5_codes[]
+  wuod0_codes                       wuod0_codes[]
+  wuod1_codes                       wuod1_codes[]
+  wuod5_codes                       wuod5_codes[]
+  yvrb0_codes                       yvrb0_codes[]
+  yvrb1_codes                       yvrb1_codes[]
+  yvrb5_codes                       yvrb5_codes[]
+  zbhh0_codes                       zbhh0_codes[]
+  zbhh1_codes                       zbhh1_codes[]
+  zbhh5_codes                       zbhh5_codes[]
+  zbrh0_codes                       zbrh0_codes[]
+  zbrh1_codes                       zbrh1_codes[]
+  zbrh5_codes                       zbrh5_codes[]
+  zdld0_codes                       zdld0_codes[]
+  zdld1_codes                       zdld1_codes[]
+  zdld5_codes                       zdld5_codes[]
+  zyys0_codes                       zyys0_codes[]
+  zyys1_codes                       zyys1_codes[]
+  zyys5_codes                       zyys5_codes[]
 
   @@unique([product_id, gtin])
 }
@@ -706,7 +1019,6 @@ model product_history {
   created_at                        DateTime                       @default(now()) @db.Timestamptz(6)
   is_latest                         Boolean                        @default(true)
   schedule_drug                     Boolean                        @default(false)
-  Aggregation_transaction           Aggregation_transaction[]
   CodeGenerationRequest             CodeGenerationRequest[]
   CodeGenerationRequestHistory      CodeGenerationRequestHistory[]
   CodeGenerationSummary             CodeGenerationSummary[]
@@ -716,6 +1028,8 @@ model product_history {
   Company                           Company                        @relation(fields: [company_uuid], references: [id])
   CountryMaster                     CountryMaster                  @relation(fields: [country_id], references: [id])
   product                           product                        @relation(fields: [product_uuid], references: [id])
+  sscc_code_summary                 sscc_code_summary[]
+  sscc_codes                        sscc_codes[]
 }
 
 model reportFileFormat {
@@ -860,35 +1174,2381 @@ model user_history {
 }
 
 model users {
-  id                         String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id                    String                    @unique @db.VarChar(50)
-  user_name                  String                    @unique @db.VarChar(50)
-  email                      String                    @default("") @db.VarChar(255)
-  phone_number               String                    @default("") @db.VarChar(20)
-  password                   String                    @db.VarChar(255)
-  location_id                String?                   @db.Uuid
-  department_id              String?                   @db.Uuid
-  designation_id             String?                   @db.Uuid
-  profile_photo              String?                   @db.VarChar(255)
-  esign_status               esign_status              @default(null)
-  is_active                  Boolean                   @default(true)
-  role                       Role                      @default(user)
-  jwt_token                  String?                   @db.VarChar(1024)
-  last_activity_at           DateTime?                 @db.Timestamptz(6)
-  password_expires_on        DateTime                  @default(dbgenerated("(now() + '90 days'::interval)")) @db.Timestamptz(6)
-  old_passwords              String[]                  @default([]) @db.VarChar(255)
-  failed_login_attempt_count Int                       @default(0)
-  last_failed_login_at       DateTime?                 @db.Timestamptz(6)
-  account_locked_until_at    DateTime?                 @db.Timestamptz(6)
+  id                         String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                    String                      @unique @db.VarChar(50)
+  user_name                  String                      @unique @db.VarChar(50)
+  email                      String                      @default("") @db.VarChar(255)
+  phone_number               String                      @default("") @db.VarChar(20)
+  password                   String                      @db.VarChar(255)
+  location_id                String?                     @db.Uuid
+  department_id              String?                     @db.Uuid
+  designation_id             String?                     @db.Uuid
+  profile_photo              String?                     @db.VarChar(255)
+  esign_status               esign_status                @default(null)
+  is_active                  Boolean                     @default(true)
+  role                       Role                        @default(user)
+  jwt_token                  String?                     @db.VarChar(1024)
+  last_activity_at           DateTime?                   @db.Timestamptz(6)
+  password_expires_on        DateTime                    @default(dbgenerated("(now() + '90 days'::interval)")) @db.Timestamptz(6)
+  old_passwords              String[]                    @default([]) @db.VarChar(255)
+  failed_login_attempt_count Int                         @default(0)
+  last_failed_login_at       DateTime?                   @db.Timestamptz(6)
+  account_locked_until_at    DateTime?                   @db.Timestamptz(6)
   accessibility              Json?
-  created_at                 DateTime                  @default(now()) @db.Timestamptz(6)
-  updated_at                 DateTime                  @default(now()) @db.Timestamptz(6)
-  socket_id                  String                    @default("")
+  created_at                 DateTime                    @default(now()) @db.Timestamptz(6)
+  updated_at                 DateTime                    @default(now()) @db.Timestamptz(6)
+  socket_id                  String                      @default("")
   Aggregation_transaction    Aggregation_transaction[]
+  purchaseOrder              purchaseOrder[]
+  purchaseOrderHistory       purchaseOrderHistory[]
+  salesOrder                 salesOrder[]
+  salesOrderHistory          salesOrderHistory[]
+  salesReturn                salesReturn[]
+  salesReturnHistory         salesReturnHistory[]
+  stockTransferOrder         stockTransferOrder[]
+  stockTransferOrderHistory  stockTransferOrderHistory[]
   user_history               user_history[]
-  departments                departments?              @relation(fields: [department_id], references: [id])
-  designations               designations?             @relation(fields: [designation_id], references: [id])
-  locations                  locations?                @relation(fields: [location_id], references: [id])
+  departments                departments?                @relation(fields: [department_id], references: [id])
+  designations               designations?               @relation(fields: [designation_id], references: [id])
+  locations                  locations?                  @relation(fields: [location_id], references: [id])
+}
+
+model avkq0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model avkq1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model avkq5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model cwsb0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model cwsb1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model cwsb5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model epuj0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model epuj1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model epuj5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model fbos0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model fbos1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model fbos5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model fpyf0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model fpyf1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model fpyf2_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model fpyf5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model fvwb0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model fvwb1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model fvwb5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model gigf0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model gigf1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model gigf5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model gzru0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model gzru1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model gzru5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model hqdj0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model hqdj1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model hyst0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model hyst1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model hyst5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model iuok0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model iuok1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model iuok5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model jwqo0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model jwqo1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model jwqo5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model lqjf0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model lqjf1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model ltli0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model ltli1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model ltli5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model mvcr0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model mvcr1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model mvcr5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model nmko0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model nmko1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model nmko5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model nyaw0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model nyaw1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model nyaw5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model nzqy0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model nzqy1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model nzqy5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model oqly0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model oqly1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model oqly5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model oywh0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model oywh1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model oywh5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model pajz0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model pajz1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model pajz5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model purchaseOrder {
+  id                                      String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  from                                    String                 @db.Uuid
+  to                                      String                 @db.Uuid
+  orders                                  Json[]
+  orderNo                                 String
+  userId                                  String                 @db.Uuid
+  esign_status                            esign_status           @default(null)
+  created_at                              DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at                              DateTime               @db.Timestamptz(6)
+  locations_purchaseOrder_fromTolocations locations              @relation("purchaseOrder_fromTolocations", fields: [from], references: [id])
+  locations_purchaseOrder_toTolocations   locations              @relation("purchaseOrder_toTolocations", fields: [to], references: [id])
+  users                                   users                  @relation(fields: [userId], references: [id])
+  purchaseOrderHistory                    purchaseOrderHistory[]
+}
+
+model purchaseOrderHistory {
+  id                                             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  purchaseOrderId                                String        @db.Uuid
+  orderNo                                        String
+  from                                           String        @db.Uuid
+  to                                             String        @db.Uuid
+  orders                                         Json[]
+  esign_status                                   esign_status  @default(null)
+  is_latest                                      Boolean       @default(true)
+  userId                                         String        @db.Uuid
+  created_at                                     DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at                                     DateTime      @db.Timestamptz(6)
+  locations_purchaseOrderHistory_fromTolocations locations     @relation("purchaseOrderHistory_fromTolocations", fields: [from], references: [id])
+  purchaseOrder                                  purchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  locations_purchaseOrderHistory_toTolocations   locations     @relation("purchaseOrderHistory_toTolocations", fields: [to], references: [id])
+  users                                          users         @relation(fields: [userId], references: [id])
+}
+
+model rlex0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model rlex1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model rlex5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model salesOrder {
+  id                                   String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderNo                              String
+  from                                 String              @db.Uuid
+  to                                   String              @db.Uuid
+  orders                               Json[]
+  userId                               String              @db.Uuid
+  esign_status                         esign_status        @default(null)
+  created_at                           DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at                           DateTime            @db.Timestamptz(6)
+  locations_salesOrder_fromTolocations locations           @relation("salesOrder_fromTolocations", fields: [from], references: [id])
+  locations_salesOrder_toTolocations   locations           @relation("salesOrder_toTolocations", fields: [to], references: [id])
+  users                                users               @relation(fields: [userId], references: [id])
+  salesOrderHistory                    salesOrderHistory[]
+}
+
+model salesOrderHistory {
+  id                                          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salesOrderId                                String       @db.Uuid
+  orderNo                                     String
+  from                                        String       @db.Uuid
+  to                                          String       @db.Uuid
+  orders                                      Json[]
+  esign_status                                esign_status @default(null)
+  is_latest                                   Boolean      @default(true)
+  userId                                      String       @db.Uuid
+  created_at                                  DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at                                  DateTime     @db.Timestamptz(6)
+  locations_salesOrderHistory_fromTolocations locations    @relation("salesOrderHistory_fromTolocations", fields: [from], references: [id])
+  salesOrder                                  salesOrder   @relation(fields: [salesOrderId], references: [id])
+  locations_salesOrderHistory_toTolocations   locations    @relation("salesOrderHistory_toTolocations", fields: [to], references: [id])
+  users                                       users        @relation(fields: [userId], references: [id])
+}
+
+model salesReturn {
+  id                                    String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderNo                               String
+  from                                  String               @db.Uuid
+  to                                    String               @db.Uuid
+  orders                                Json[]
+  userId                                String               @db.Uuid
+  esign_status                          esign_status         @default(null)
+  created_at                            DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at                            DateTime             @db.Timestamptz(6)
+  locations_salesReturn_fromTolocations locations            @relation("salesReturn_fromTolocations", fields: [from], references: [id])
+  locations_salesReturn_toTolocations   locations            @relation("salesReturn_toTolocations", fields: [to], references: [id])
+  users                                 users                @relation(fields: [userId], references: [id])
+  salesReturnHistory                    salesReturnHistory[]
+}
+
+model salesReturnHistory {
+  id                                           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salesReturnId                                String       @db.Uuid
+  orderNo                                      String
+  from                                         String       @db.Uuid
+  to                                           String       @db.Uuid
+  orders                                       Json[]
+  esign_status                                 esign_status @default(null)
+  is_latest                                    Boolean      @default(true)
+  userId                                       String       @db.Uuid
+  created_at                                   DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at                                   DateTime     @db.Timestamptz(6)
+  locations_salesReturnHistory_fromTolocations locations    @relation("salesReturnHistory_fromTolocations", fields: [from], references: [id])
+  salesReturn                                  salesReturn  @relation(fields: [salesReturnId], references: [id])
+  locations_salesReturnHistory_toTolocations   locations    @relation("salesReturnHistory_toTolocations", fields: [to], references: [id])
+  users                                        users        @relation(fields: [userId], references: [id])
+}
+
+model sphn0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model sphn1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model sphn5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model sppq0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model sppq1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model sppq5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model sscc_code_summary {
+  id                  String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id          String          @db.Uuid
+  batch_id            String          @db.Uuid
+  product_history_id  String          @db.Uuid
+  product_name        String          @db.VarChar(255)
+  packaging_hierarchy Int
+  last_generated      Int
+  updated_at          DateTime?       @default(now()) @db.Timestamp(6)
+  created_at          DateTime?       @default(now()) @db.Timestamp(6)
+  batch               batch           @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product_history     product_history @relation(fields: [product_history_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product             product         @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model sscc_codes {
+  id                    String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no             Int?
+  sscc_code             String                @db.VarChar(255)
+  pack_level            Int
+  product_id            String                @db.Uuid
+  batch_id              String                @db.Uuid
+  product_history_id    String                @db.Uuid
+  location_id           String                @db.Uuid
+  code_gen_id           String                @db.Uuid
+  printed               Boolean?              @default(false)
+  is_aggregated         Boolean?              @default(false)
+  is_dropped            Boolean?              @default(false)
+  parent_id             String?               @db.Uuid
+  sent_to_cloud         Boolean?              @default(false)
+  dropout_reason        String?               @db.VarChar(20)
+  updated_at            DateTime?             @default(now()) @db.Timestamp(6)
+  created_at            DateTime?             @default(now()) @db.Timestamp(6)
+  batch                 batch                 @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  CodeGenerationRequest CodeGenerationRequest @relation(fields: [code_gen_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations             locations             @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product_history       product_history       @relation(fields: [product_history_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product               product               @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model stockTransferOrder {
+  id                                           String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderNo                                      String
+  from                                         String                      @db.Uuid
+  to                                           String                      @db.Uuid
+  orders                                       Json[]
+  userId                                       String                      @db.Uuid
+  esign_status                                 esign_status                @default(null)
+  created_at                                   DateTime                    @default(now()) @db.Timestamptz(6)
+  updated_at                                   DateTime                    @db.Timestamptz(6)
+  locations_stockTransferOrder_fromTolocations locations                   @relation("stockTransferOrder_fromTolocations", fields: [from], references: [id])
+  locations_stockTransferOrder_toTolocations   locations                   @relation("stockTransferOrder_toTolocations", fields: [to], references: [id])
+  users                                        users                       @relation(fields: [userId], references: [id])
+  stockTransferOrderHistory                    stockTransferOrderHistory[]
+}
+
+model stockTransferOrderHistory {
+  id                                                  String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  stockTransferOrderId                                String             @db.Uuid
+  orderNo                                             String
+  from                                                String             @db.Uuid
+  to                                                  String             @db.Uuid
+  orders                                              Json[]
+  esign_status                                        esign_status       @default(null)
+  is_latest                                           Boolean            @default(true)
+  userId                                              String             @db.Uuid
+  created_at                                          DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at                                          DateTime           @db.Timestamptz(6)
+  locations_stockTransferOrderHistory_fromTolocations locations          @relation("stockTransferOrderHistory_fromTolocations", fields: [from], references: [id])
+  stockTransferOrder                                  stockTransferOrder @relation(fields: [stockTransferOrderId], references: [id])
+  locations_stockTransferOrderHistory_toTolocations   locations          @relation("stockTransferOrderHistory_toTolocations", fields: [to], references: [id])
+  users                                               users              @relation(fields: [userId], references: [id])
+}
+
+model tkzp0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model tkzp1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model vzth0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model vzth1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model vzth5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model wuod0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model wuod1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model wuod5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model yvrb0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model yvrb1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model yvrb5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model zbhh0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model zbhh1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model zbhh5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model zbrh0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model zbrh1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model zbrh5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model zdld0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model zdld1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model zdld5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model zyys0_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model zyys1_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model zyys5_codes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial_no      Int       @default(autoincrement())
+  product_id     String    @db.Uuid
+  batch_id       String    @db.Uuid
+  unique_code    String    @db.VarChar(255)
+  location_id    String    @db.Uuid
+  code_gen_id    String    @db.VarChar(255)
+  country_code   String    @db.VarChar(1000)
+  printed        Boolean?  @default(false)
+  is_scanned     Boolean?  @default(false)
+  is_aggregated  Boolean?  @default(false)
+  is_dropped     Boolean?  @default(false)
+  parent_id      String?   @db.Uuid
+  sent_to_cloud  Boolean?  @default(false)
+  dropout_reason String?   @db.VarChar(20)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  batch          batch     @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations      locations @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product        product   @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 enum Caution_logo {
@@ -977,4 +3637,14 @@ enum fileType {
   BAT
   PDF
   WIT
+}
+
+enum locationType {
+  PLANT
+  CFA
+  DISTRIBUTOR
+  DEALER
+  VENDOR
+  WAREHOUSE
+  CUSTOMER
 }

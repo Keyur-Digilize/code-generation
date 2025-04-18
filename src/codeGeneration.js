@@ -311,144 +311,144 @@ const processRequestedCodes = async () => {
     console.log("Cron job started: Processing code generation requests...");
 
     const codeGenerationRequests = await prisma.codeGenerationRequest.findMany({
-      where: { status: "requested" },
+      where: { status: "requested", esign_status: { in: ['approved', 'null']} },
       orderBy: { created_at: "asc" },
     });
 
     for (const element of codeGenerationRequests) {
       console.log("Record requested ", element);
-      const product = await prisma.product.findFirst({
-        where: { id: element.product_id },
-      });
-      const batch = await prisma.batch.findFirst({
-        where: { id: element.batch_id },
-      });
-
-      if (!product || !batch) {
-        console.log("Product or Batch not found for request ID:", element.id);
-        continue;
-      }
-
-      const LEVEL = element.packaging_hierarchy.replace("level", "");
-      if (parseInt(LEVEL) === 5 || parseInt(LEVEL) === 6) {
-        console.log("Skipping level ", LEVEL);
-        const data = {
-          product_id: product.id,
-          product_name: product.product_name,
-          batch_id: batch.id,
-          product_history_id: batch.producthistory_uuid,
-          location_id: batch.location_id,
-          code_gen_id: element.id,
-          prefix: product.prefix,
-          no_of_codes: element.no_of_codes,
-          pack_level: parseInt(LEVEL),
-          packaging_hierarchy: element.packaging_hierarchy,
-          generation_id: element.generation_id,
-        };
-        await generateSsccCode(data);
-        console.log("Sscc code generated for ", LEVEL);
-      } else {
-        const tableName =
-          `${element.generation_id}${LEVEL}_CODES`.toLowerCase();
-        const exists = await checkTableExists(tableName);
-        console.log("Table ", tableName, "exists ", exists);
-
-        const countryCodeStructure = await prisma.countryMaster.findFirst({
-          where: { id: product.country_id },
-          select: { codeStructure: true },
+        const product = await prisma.product.findFirst({
+          where: { id: element.product_id },
         });
-        if (exists) {
-          const skipped = await prisma.codeGenerationSummary.findFirst({
-            where: {
-              product_id: element.product_id,
-              packaging_hierarchy: LEVEL,
-              generation_id: element.generation_id,
-            },
-            select: { last_generated: true },
-          });
-
-          const codes = await prisma.codesGenerated.findMany({
-            skip: skipped?.last_generated
-              ? parseInt(skipped?.last_generated)
-              : 0,
-            take: parseInt(element.no_of_codes),
-          });
-
-          await updateStatusOfCodeRequest(element.id, "inprogress");
-          const countryCode = await getCountryCode(
-            countryCodeStructure.codeStructure,
-            product,
-            batch,
-            LEVEL
-          );
-          // Prepare data array
-          const data = codes.map((code) => {
-            const uniqueId = `${element.generation_id}${LEVEL}${code.code}`;
-            return [
-              product.id,
-              batch.id,
-              batch.location_id,
-              element.id,
-              uniqueId,
-              countryCode.replaceAll("uniqueCode", uniqueId),
-            ];
-          });
-          // Bulk insert
-          for (let i = 0; i < data.length; i += 1000) {
-            const chunk = data.slice(i, i + 1000);
-            await createRecordsInDynamicTable(tableName, chunk);
-          }
-          await updateStatusOfCodeRequest(element.id, "completed");
-          await updateRecordInCodeSummary({
-            product_id: product.id,
-            product_name: product.product_name,
-            packaging_hierarchy: element.packaging_hierarchy,
-            generation_id: element.generation_id,
-            generated: codes.length,
-          });
-        } else {
-          console.log(`Table ${tableName} does not exist. Creating...`);
-          await createDynamicTable(tableName);
-
-          const codes = await prisma.codesGenerated.findMany({
-            skip: 0,
-            take: parseInt(element.no_of_codes),
-          });
-          console.log("Total codes fetch ", codes.length);
-          await updateStatusOfCodeRequest(element.id, "inprogress");
-          // Prepare data array
-          let countryCode = await getCountryCode(
-            countryCodeStructure.codeStructure,
-            product,
-            batch,
-            LEVEL
-          );
-          const data = codes.map((code) => {
-            const uniqueId = `${element.generation_id}${LEVEL}${code.code}`;
-            return [
-              product.id,
-              batch.id,
-              batch.location_id,
-              element.id,
-              uniqueId,
-              countryCode.replaceAll("uniqueCode", uniqueId),
-            ];
-          });
-          // Bulk insert
-          for (let i = 0; i < data.length; i += 1000) {
-            const chunk = data.slice(i, i + 1000);
-            await createRecordsInDynamicTable(tableName, chunk);
-          }
-          await updateStatusOfCodeRequest(element.id, "completed");
-          await createRecordInCodeSummary({
-            product_id: product.id,
-            product_name: product.product_name,
-            packaging_hierarchy: element.packaging_hierarchy,
-            generation_id: element.generation_id,
-            no_of_codes: element.no_of_codes,
-          });
+        const batch = await prisma.batch.findFirst({
+          where: { id: element.batch_id },
+        });
+  
+        if (!product || !batch) {
+          console.log("Product or Batch not found for request ID:", element.id);
+          continue;
         }
-      }
+  
+        const LEVEL = element.packaging_hierarchy.replace("level", "");
+        if (parseInt(LEVEL) === 5 || parseInt(LEVEL) === 6) {
+          console.log("Skipping level ", LEVEL);
+          const data = {
+            product_id: product.id,
+            product_name: product.product_name,
+            batch_id: batch.id,
+            product_history_id: batch.producthistory_uuid,
+            location_id: batch.location_id,
+            code_gen_id: element.id,
+            prefix: product.prefix,
+            no_of_codes: element.no_of_codes,
+            pack_level: parseInt(LEVEL),
+            packaging_hierarchy: element.packaging_hierarchy,
+            generation_id: element.generation_id,
+          };
+          await generateSsccCode(data);
+          console.log("Sscc code generated for ", LEVEL);
+        } else {
+          const tableName =
+            `${element.generation_id}${LEVEL}_CODES`.toLowerCase();
+          const exists = await checkTableExists(tableName);
+          console.log("Table ", tableName, "exists ", exists);
+  
+          const countryCodeStructure = await prisma.countryMaster.findFirst({
+            where: { id: product.country_id },
+            select: { codeStructure: true },
+          });
+          if (exists) {
+            const skipped = await prisma.codeGenerationSummary.findFirst({
+              where: {
+                product_id: element.product_id,
+                packaging_hierarchy: LEVEL,
+                generation_id: element.generation_id,
+              },
+              select: { last_generated: true },
+            });
+  
+            const codes = await prisma.codesGenerated.findMany({
+              skip: skipped?.last_generated
+                ? parseInt(skipped?.last_generated)
+                : 0,
+              take: parseInt(element.no_of_codes),
+            });
+  
+            await updateStatusOfCodeRequest(element.id, "inprogress");
+            const countryCode = await getCountryCode(
+              countryCodeStructure.codeStructure,
+              product,
+              batch,
+              LEVEL
+            );
+            // Prepare data array
+            const data = codes.map((code) => {
+              const uniqueId = `${element.generation_id}${LEVEL}${code.code}`;
+              return [
+                product.id,
+                batch.id,
+                batch.location_id,
+                element.id,
+                uniqueId,
+                countryCode.replaceAll("uniqueCode", uniqueId),
+              ];
+            });
+            // Bulk insert
+            for (let i = 0; i < data.length; i += 1000) {
+              const chunk = data.slice(i, i + 1000);
+              await createRecordsInDynamicTable(tableName, chunk);
+            }
+            await updateStatusOfCodeRequest(element.id, "completed");
+            await updateRecordInCodeSummary({
+              product_id: product.id,
+              product_name: product.product_name,
+              packaging_hierarchy: element.packaging_hierarchy,
+              generation_id: element.generation_id,
+              generated: codes.length,
+            });
+          } else {
+            console.log(`Table ${tableName} does not exist. Creating...`);
+            await createDynamicTable(tableName);
+  
+            const codes = await prisma.codesGenerated.findMany({
+              skip: 0,
+              take: parseInt(element.no_of_codes),
+            });
+            console.log("Total codes fetch ", codes.length);
+            await updateStatusOfCodeRequest(element.id, "inprogress");
+            // Prepare data array
+            let countryCode = await getCountryCode(
+              countryCodeStructure.codeStructure,
+              product,
+              batch,
+              LEVEL
+            );
+            const data = codes.map((code) => {
+              const uniqueId = `${element.generation_id}${LEVEL}${code.code}`;
+              return [
+                product.id,
+                batch.id,
+                batch.location_id,
+                element.id,
+                uniqueId,
+                countryCode.replaceAll("uniqueCode", uniqueId),
+              ];
+            });
+            // Bulk insert
+            for (let i = 0; i < data.length; i += 1000) {
+              const chunk = data.slice(i, i + 1000);
+              await createRecordsInDynamicTable(tableName, chunk);
+            }
+            await updateStatusOfCodeRequest(element.id, "completed");
+            await createRecordInCodeSummary({
+              product_id: product.id,
+              product_name: product.product_name,
+              packaging_hierarchy: element.packaging_hierarchy,
+              generation_id: element.generation_id,
+              no_of_codes: element.no_of_codes,
+            });
+          }
+        }
     }
     console.timeEnd("data");
     console.log("Cron job completed: Code generation requests processed.");
