@@ -26,6 +26,9 @@ const createDynamicTable = async (tableName) => {
                 parent_id UUID DEFAULT NULL,
                 sent_to_cloud BOOLEAN DEFAULT FALSE,
                 dropout_reason VARCHAR(20) DEFAULT NULL,
+                is_scanned_in_order BOOLEAN DEFAULT FALSE,
+                storage_bin INTEGER,
+                in_transit BOOLEAN DEFAULT FALSE,
                 updated_at TIMESTAMP DEFAULT NOW(),
                 created_at TIMESTAMP DEFAULT NOW()
             );
@@ -173,11 +176,7 @@ const createSsccCodeSummaryTable = async () => {
         const createTableQuery = `
             CREATE TABLE IF NOT EXISTS "sscc_code_summary" (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                product_id UUID NOT NULL REFERENCES product(id) ON DELETE CASCADE,
-                batch_id UUID NOT NULL REFERENCES batch(id) ON DELETE CASCADE,
-                product_history_id UUID NOT NULL REFERENCES product_history(id) ON DELETE CASCADE,
-                product_name VARCHAR(255) NOT NULL,
-                packaging_hierarchy INTEGER NOT NULL,
+                company_prefix VARCHAR(10) NOT NULL,
                 last_generated INTEGER NOT NULL,
                 updated_at TIMESTAMP DEFAULT NOW(),
                 created_at TIMESTAMP DEFAULT NOW()
@@ -217,19 +216,11 @@ const createRecordsInSsccCodes = async (data) => {
 const createRecordInSsccCodeSummary = async (data) => {
     await prisma.$queryRawUnsafe(`
         INSERT INTO "sscc_code_summary" (
-            product_id, 
-            batch_id, 
-            product_history_id, 
-            product_name, 
-            packaging_hierarchy, 
+            company_prefix,
             last_generated
         ) 
         VALUES (
-            '${data.product_id}', 
-            '${data.batch_id}', 
-            '${data.product_history_id}',
-            '${data.product_name}',                       
-            ${data.packaging_hierarchy},                                       
+            '${data.company_prefix}',                                     
             ${data.no_of_codes}                                    
         );
     `);
@@ -237,11 +228,8 @@ const createRecordInSsccCodeSummary = async (data) => {
 
 const updateSsccCodeSummary = async (data) => {
     const query = `UPDATE "sscc_code_summary"
-        SET last_generated = last_generated + ${data.no_of_codes},
-        updated_at = NOW()
-        WHERE product_id = '${data.product_id}'
-        AND batch_id = '${data.batch_id}'
-        AND packaging_hierarchy = ${data.packaging_hierarchy}
+        SET last_generated = last_generated + ${data.no_of_codes}, updated_at = NOW() 
+        WHERE id = '${data.id}'
     `;
     await prisma.$queryRawUnsafe(query);
 };

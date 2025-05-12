@@ -248,21 +248,21 @@ const generateSsccCode = async (data) => {
   !summaryExists && (await createSsccCodeSummaryTable());
 
   let lastGenerated = await prisma.$queryRawUnsafe(
-    `SELECT SUM(last_generated) AS max_last_generated FROM "sscc_code_summary"`
+    `SELECT last_generated FROM "sscc_code_summary" WHERE company_prefix = '${data.prefix}'`
   );
   console.log("Last generated 5 | 6 ", lastGenerated);
-  lastGenerated = lastGenerated[0].max_last_generated
-    ? parseInt(lastGenerated[0].max_last_generated.toString().replace("n", ""))
+  lastGenerated = lastGenerated[0]?.last_generated
+    ? parseInt(lastGenerated[0].last_generated)
     : 0;
   const codes = [];
   for (let i = 1; i <= data.no_of_codes; i++) {
-    const SIXTEEN_CHAR =
-      parseInt(data.prefix.padEnd(16, 0)) + (lastGenerated + i);
+    const added = lastGenerated + i
+    const SIXTEEN_CHAR = parseInt(data.prefix.padEnd(16, 0)).toString().concat(added);
     const calculatedCheckDigit = calculateSsccCheckDigit(
       `${EXTENSION_DIGIT}${SIXTEEN_CHAR}`
     );
     const sscc_code = `${EXTENSION_DIGIT}${SIXTEEN_CHAR}${calculatedCheckDigit}`;
-    console.log(`${lastGenerated + i} = ${sscc_code}`);
+    console.log(`code : ${lastGenerated + i} = ${sscc_code}`);
     codes.push([
       sscc_code,
       data.pack_level,
@@ -281,24 +281,16 @@ const generateSsccCode = async (data) => {
   }
   await updateStatusOfCodeRequest(data.code_gen_id, "completed");
 
-  const recordExists = await prisma.$queryRawUnsafe(
-    `SELECT * FROM "sscc_code_summary" WHERE product_id = '${data.product_id}' AND packaging_hierarchy = ${data.pack_level}`
-  );
+  const recordExists = await prisma.$queryRawUnsafe(`SELECT id FROM "sscc_code_summary" WHERE company_prefix = '${data.prefix}'`);
   console.log("Record exists ", recordExists);
   if (recordExists.length > 0) {
     await updateSsccCodeSummary({
-      product_id: data.product_id,
-      batch_id: data.batch_id,
-      packaging_hierarchy: data.pack_level,
+      id: recordExists[0].id,
       no_of_codes: parseInt(data.no_of_codes),
     });
   } else {
     await createRecordInSsccCodeSummary({
-      product_id: data.product_id,
-      batch_id: data.batch_id,
-      product_history_id: data.product_history_id,
-      product_name: data.product_name,
-      packaging_hierarchy: data.pack_level,
+      company_prefix: data.prefix,
       no_of_codes: parseInt(data.no_of_codes),
     });
   }
@@ -311,7 +303,7 @@ const processRequestedCodes = async () => {
     console.log("Cron job started: Processing code generation requests...");
 
     const codeGenerationRequests = await prisma.codeGenerationRequest.findMany({
-      where: { status: "requested", esign_status: { in: ['approved', 'null']} },
+      where: { status: "requested" },
       orderBy: { created_at: "asc" },
     });
 
@@ -331,7 +323,7 @@ const processRequestedCodes = async () => {
   
         const LEVEL = element.packaging_hierarchy.replace("level", "");
         if (parseInt(LEVEL) === 5 || parseInt(LEVEL) === 6) {
-          console.log("Skipping level ", LEVEL);
+          console.log("Current level ", LEVEL);
           const data = {
             product_id: product.id,
             product_name: product.product_name,
@@ -344,6 +336,7 @@ const processRequestedCodes = async () => {
             pack_level: parseInt(LEVEL),
             packaging_hierarchy: element.packaging_hierarchy,
             generation_id: element.generation_id,
+            prefix: product.prefix
           };
           await generateSsccCode(data);
           console.log("Sscc code generated for ", LEVEL);
