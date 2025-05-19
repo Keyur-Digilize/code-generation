@@ -159,6 +159,8 @@ const createSsccCodesTable = async () => {
                 parent_id UUID DEFAULT NULL,
                 sent_to_cloud BOOLEAN DEFAULT FALSE,
                 dropout_reason VARCHAR(20) DEFAULT NULL,
+                is_scanned_in_order  BOOLEAN DEFAULT FALSE,
+                is_opened  BOOLEAN DEFAULT FALSE,
                 updated_at TIMESTAMP DEFAULT NOW(),
                 created_at TIMESTAMP DEFAULT NOW()
             );
