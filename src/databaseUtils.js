@@ -6,7 +6,7 @@ const sanitizeTableName = (name) => {
     return name.replace(/[^a-zA-Z0-9_]/g, '');
 };
 
-const createDynamicTable = async (tableName) => {
+const createDynamicTable = async (tableName, tx) => {
     try {
         const sanitizedTableName = sanitizeTableName(tableName);
         const createTableQuery = `
@@ -33,7 +33,7 @@ const createDynamicTable = async (tableName) => {
                 created_at TIMESTAMP DEFAULT NOW()
             );
         `;
-        await prisma.$executeRawUnsafe(createTableQuery);
+        await tx.$executeRawUnsafe(createTableQuery);
         console.log(`Table ${sanitizedTableName} created successfully.`);
     } catch (error) {
         console.error("Error creating table:", error);
@@ -66,32 +66,45 @@ const createRecordInDynamicTable = async (tableName, product, batch, element, co
     await prisma.$executeRawUnsafe(query, product.id, batch.id, batch.location_id, element.id, uniqueId, countryCode);
 };
 
-const createRecordsInDynamicTable = async (tableName, data) => {
-    
-    // Prepare the query for bulk insert
-    const valuesPlaceholder = data
-        .map(
-            (_, index) =>
-                `($${index * 6 + 1}::uuid, $${index * 6 + 2}::uuid, $${index * 6 + 3}::uuid, $${index * 6 + 4}, $${index * 6 + 5}, $${index * 6 + 6})`
-        )
-        .join(", ");
+const columns = [
+  "product_id",
+  "batch_id",
+  "location_id",
+  "code_gen_id",
+  "unique_code",
+  "country_code"
+];
 
+const createRecordsInDynamicTable = async (tableName, data, tx) => {
+    const numFields = columns.length;
+      // Build VALUES placeholders
+    const valuesPlaceholder = data
+    .map((_, rowIndex) => {
+      const offset = rowIndex * numFields;
+      const placeholders = columns
+        .map((_, colIndex) => `$${offset + colIndex + 1}`)
+        .join(", ");
+      return `(${placeholders})`;
+    })
+    .join(", ");
+
+    // Flatten parameters using column order
+    const parameters = data.flatMap(row => columns.map(col => row[col]));
+
+    // Flatten the data array into a single array for parameterized query
     const query = `
         INSERT INTO ${tableName}
-        (product_id, batch_id, location_id, code_gen_id, unique_code, country_code)
+        (${columns.join(", ")})
         VALUES ${valuesPlaceholder};
     `;
 
-    // Flatten the data array into a single array for parameterized query
-    const parameters = data.flat();
-
     // Execute the query
-    await prisma.$executeRawUnsafe(query, ...parameters);
+    await tx.$executeRawUnsafe(query, ...parameters);
 };
 
-const createRecordInCodeSummary = async (data) => {
+const createRecordInCodeSummary = async (data, tx) => {
     const packaging_hierarchy = data.packaging_hierarchy.replace('level', "");
-    await prisma.codeGenerationSummary.create({
+    await tx.codeGenerationSummary.create({
         data: {
             product_id: data.product_id,
             product_name: data.product_name,
@@ -103,9 +116,9 @@ const createRecordInCodeSummary = async (data) => {
     // console.log("code summary added", summary);
 };
 
-const updateRecordInCodeSummary = async (data) => {
+const updateRecordInCodeSummary = async (data, tx) => {
     const packaging_hierarchy = data.packaging_hierarchy.replace('level', "");
-    const previousSummaryOfCode = await prisma.codeGenerationSummary.findFirst({
+    const previousSummaryOfCode = await tx.codeGenerationSummary.findFirst({
         where: {
             product_id: data.product_id,
             generation_id: data.generation_id,
@@ -118,7 +131,7 @@ const updateRecordInCodeSummary = async (data) => {
     });
     if(previousSummaryOfCode){
         const sumOfGenerated = data.generated + (previousSummaryOfCode?.last_generated ? parseInt(previousSummaryOfCode?.last_generated) : 0);
-        await prisma.codeGenerationSummary.update({
+        await tx.codeGenerationSummary.update({
             where: { id: previousSummaryOfCode.id },
             data: {
                 product_id: data.product_id,
@@ -132,8 +145,8 @@ const updateRecordInCodeSummary = async (data) => {
     // console.log("code summary updated", summary);
 };
 
-const updateStatusOfCodeRequest = async (id, status) => {
-    await prisma.codeGenerationRequest.update({
+const updateStatusOfCodeRequest = async (id, status, tx) => {
+    await tx.codeGenerationRequest.update({
         where: { id },
         data: { status }
     });
@@ -192,7 +205,7 @@ const createSsccCodeSummaryTable = async () => {
     }
 };
 
-const createRecordsInSsccCodes = async (data) => {
+const createRecordsInSsccCodes = async (data, tx) => {
     
     // Prepare the query for bulk insert
     const valuesPlaceholder = data
@@ -212,11 +225,11 @@ const createRecordsInSsccCodes = async (data) => {
     const parameters = data.flat();
 
     // Execute the query
-    await prisma.$executeRawUnsafe(query, ...parameters);
+    await tx.$executeRawUnsafe(query, ...parameters);
 };
 
-const createRecordInSsccCodeSummary = async (data) => {
-    await prisma.$queryRawUnsafe(`
+const createRecordInSsccCodeSummary = async (data, tx) => {
+    await tx.$queryRawUnsafe(`
         INSERT INTO "sscc_code_summary" (
             company_prefix,
             last_generated
@@ -228,12 +241,12 @@ const createRecordInSsccCodeSummary = async (data) => {
     `);
 };
 
-const updateSsccCodeSummary = async (data) => {
+const updateSsccCodeSummary = async (data, tx) => {
     const query = `UPDATE "sscc_code_summary"
         SET last_generated = last_generated + ${data.no_of_codes}, updated_at = NOW() 
         WHERE id = '${data.id}'
     `;
-    await prisma.$queryRawUnsafe(query);
+    await tx.$queryRawUnsafe(query);
 };
 
 export {
