@@ -41,8 +41,8 @@ const createDynamicTable = async (tableName, tx) => {
     }
 };
 
-const checkTableExists = async (tableName) => {
-    const result = await prisma.$queryRaw`SELECT EXISTS (
+const checkTableExists = async (tableName, tx = prisma) => {
+    const result = await tx.$queryRaw`SELECT EXISTS (
            SELECT 1 
            FROM information_schema.tables 
            WHERE table_schema = 'public' 
@@ -66,40 +66,30 @@ const createRecordInDynamicTable = async (tableName, product, batch, element, co
     await prisma.$executeRawUnsafe(query, product.id, batch.id, batch.location_id, element.id, uniqueId, countryCode);
 };
 
-const columns = [
-  "product_id",
-  "batch_id",
-  "location_id",
-  "code_gen_id",
-  "unique_code",
-  "country_code"
-];
-
-const createRecordsInDynamicTable = async (tableName, data, tx) => {
-    const numFields = columns.length;
-      // Build VALUES placeholders
-    const valuesPlaceholder = data
-    .map((_, rowIndex) => {
-      const offset = rowIndex * numFields;
-      const placeholders = columns
-        .map((_, colIndex) => `$${offset + colIndex + 1}`)
-        .join(", ");
-      return `(${placeholders})`;
-    })
+const createRecordsInDynamicTable = async (tableName, data, tx = prisma) => {
+  const valuesPlaceholder = data
+    .map(
+      (_, index) =>
+        `($${index * 6 + 1}::uuid, $${index * 6 + 2}::uuid, $${index * 6 + 3}::uuid, $${index * 6 + 4}, $${index * 6 + 5}, $${index * 6 + 6})`
+    )
     .join(", ");
 
-    // Flatten parameters using column order
-    const parameters = data.flatMap(row => columns.map(col => row[col]));
+  const query = `
+    INSERT INTO ${tableName}
+    (product_id, batch_id, location_id, code_gen_id, unique_code, country_code)
+    VALUES ${valuesPlaceholder};
+  `;
 
-    // Flatten the data array into a single array for parameterized query
-    const query = `
-        INSERT INTO ${tableName}
-        (${columns.join(", ")})
-        VALUES ${valuesPlaceholder};
-    `;
+  const parameters = data.flatMap(item => [
+    item.product_id,
+    item.batch_id,
+    item.location_id,
+    item.code_gen_id,
+    item.unique_code,
+    item.country_code,
+  ]);
 
-    // Execute the query
-    await tx.$executeRawUnsafe(query, ...parameters);
+  await tx.$executeRawUnsafe(query, ...parameters);
 };
 
 const createRecordInCodeSummary = async (data, tx) => {
@@ -153,7 +143,7 @@ const updateStatusOfCodeRequest = async (id, status, tx) => {
     // console.log("status updated", result);
 };
 
-const createSsccCodesTable = async () => {
+const createSsccCodesTable = async (tx = prisma) => {
     try {
         const createTableQuery = `
             CREATE TABLE IF NOT EXISTS "sscc_codes" (
@@ -178,7 +168,7 @@ const createSsccCodesTable = async () => {
                 created_at TIMESTAMP DEFAULT NOW()
             );
         `;
-        await prisma.$executeRawUnsafe(createTableQuery);
+        await tx.$executeRawUnsafe(createTableQuery);
         console.log(`Table sscc_codes created successfully.`);
     } catch (error) {
         console.error("Error creating table:", error);
@@ -186,7 +176,7 @@ const createSsccCodesTable = async () => {
     }
 };
 
-const createSsccCodeSummaryTable = async () => {
+const createSsccCodeSummaryTable = async (tx = prisma) => {
     try {
         const createTableQuery = `
             CREATE TABLE IF NOT EXISTS "sscc_code_summary" (
@@ -197,7 +187,7 @@ const createSsccCodeSummaryTable = async () => {
                 created_at TIMESTAMP DEFAULT NOW()
             );
         `;
-        await prisma.$executeRawUnsafe(createTableQuery);
+        await tx.$executeRawUnsafe(createTableQuery);
         console.log(`Table sscc_code_summary created successfully.`);
     } catch (error) {
         console.error("Error creating table:", error);
@@ -228,7 +218,7 @@ const createRecordsInSsccCodes = async (data, tx) => {
     await tx.$executeRawUnsafe(query, ...parameters);
 };
 
-const createRecordInSsccCodeSummary = async (data, tx) => {
+const createRecordInSsccCodeSummary = async (data, tx = prisma) => {
     await tx.$queryRawUnsafe(`
         INSERT INTO "sscc_code_summary" (
             company_prefix,
@@ -241,7 +231,7 @@ const createRecordInSsccCodeSummary = async (data, tx) => {
     `);
 };
 
-const updateSsccCodeSummary = async (data, tx) => {
+const updateSsccCodeSummary = async (data, tx = prisma) => {
     const query = `UPDATE "sscc_code_summary"
         SET last_generated = last_generated + ${data.no_of_codes}, updated_at = NOW() 
         WHERE id = '${data.id}'

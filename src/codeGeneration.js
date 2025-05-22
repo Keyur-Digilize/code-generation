@@ -245,9 +245,9 @@ const generateSsccCode = async (data, tx) => {
   console.log("Generate sscc codes data ", data);
 
   const exists = await checkTableExists("sscc_codes");
-  !exists && (await createSsccCodesTable());
+  !exists && (await createSsccCodesTable(tx));
   const summaryExists = await checkTableExists("sscc_code_summary");
-  !summaryExists && (await createSsccCodeSummaryTable());
+  !summaryExists && (await createSsccCodeSummaryTable(tx));
   //first check if last generated at exists, then proceed else it will crash here
   let lastGenerated = await tx.$queryRawUnsafe(
     `SELECT last_generated FROM "sscc_code_summary" WHERE company_prefix = '${data.prefix}'`
@@ -360,7 +360,7 @@ const processRequestedCodes = async () => {
           } else {
             const tableName =
               `${element.generation_id}${LEVEL}_CODES`.toLowerCase();
-            const exists = await checkTableExists(tableName);
+            const exists = await checkTableExists(tableName, tx);
             console.log("Table ", tableName, "exists ", exists);
 
             const countryCodeStructure = await tx.countryMaster.findFirst({
