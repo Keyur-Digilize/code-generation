@@ -150,11 +150,11 @@ const calculateGtinCheckDigit = (input) => {
   return checkDigit;
 };
 
-const getCountryCode = async (countryCode, product, batch, level) => {
+const getCountryCode = async ({ codeStructure, ndc, gtin, batchNo, mfgDate, expDate, level, registration_no }) => {
   const elements =
-    countryCode.split("/").length > 1
-      ? countryCode.split("/")
-      : countryCode.split(" ");
+    codeStructure.split("/").length > 1
+      ? codeStructure.split("/")
+      : codeStructure.split(" ");
   const finalCountryCode = [];
   console.log("element url ", elements);
   for (const element of elements) {
@@ -163,25 +163,25 @@ const getCountryCode = async (countryCode, product, batch, level) => {
     }
     switch (element.trim()) {
       case "registrationNo":
-        finalCountryCode.push(product?.registration_no);
+        finalCountryCode.push(registration_no);
         break;
 
       case "NDC":
-        finalCountryCode.push(product.ndc);
+        finalCountryCode.push(ndc);
         break;
 
       case "GTIN": {
-        const lastDigit = calculateGtinCheckDigit(`${level}${product.gtin}`);
-        finalCountryCode.push(`${level}${product.gtin}${lastDigit}`);
+        const lastDigit = calculateGtinCheckDigit(`${level}${gtin}`);
+        finalCountryCode.push(`${level}${gtin}${lastDigit}`);
         break;
       }
 
       case "batchNo":
-        finalCountryCode.push(batch.batch_no);
+        finalCountryCode.push(batchNo);
         break;
 
       case "manufacturingDate": {
-        const date = new Date(batch.manufacturing_date);
+        const date = new Date(mfgDate);
         const formattedDate = `${date
           .getFullYear()
           .toString()
@@ -194,7 +194,7 @@ const getCountryCode = async (countryCode, product, batch, level) => {
       }
 
       case "expiryDate": {
-        const date = new Date(batch.expiry_date);
+        const date = new Date(expDate);
         const formattedDate = `${date
           .getFullYear()
           .toString()
@@ -213,7 +213,6 @@ const getCountryCode = async (countryCode, product, batch, level) => {
       case "CRMURL":
         const superAdminConfigureData =
           await prisma.superadmin_configuration.findFirst({});
-        console.log(superAdminConfigureData);
         finalCountryCode.push(superAdminConfigureData.crm_url);
         break;
 
@@ -223,7 +222,7 @@ const getCountryCode = async (countryCode, product, batch, level) => {
     }
   }
   console.log("final url ", finalCountryCode);
-  return countryCode.split("/").length > 1
+  return codeStructure.split("/").length > 1
     ? finalCountryCode.join("/")
     : finalCountryCode.join("");
 };
@@ -258,8 +257,8 @@ const generateSsccCode = async (data, tx) => {
     : 0;
   const codes = [];
   for (let i = 1; i <= data.no_of_codes; i++) {
-    const added = lastGenerated + i
-    const SIXTEEN_CHAR = parseInt(data.prefix.padEnd(16, 0)).toString().concat(added);
+    const incCount = lastGenerated + i;
+    const SIXTEEN_CHAR = (parseInt(data.prefix.padEnd(16, 0)) + incCount).toString();
     const calculatedCheckDigit = calculateSsccCheckDigit(
       `${EXTENSION_DIGIT}${SIXTEEN_CHAR}`
     );
@@ -300,6 +299,40 @@ const generateSsccCode = async (data, tx) => {
   }
 };
 
+const insertInBulk = async (data)=> {
+  await updateStatusOfCodeRequest(data.elementId, "inprogress", data.tx);
+  const countryCode = await getCountryCode({
+    codeStructure: data.codeStructure,
+    ndc: data.ndc,
+    gtin: data.gtin,
+    batchNo: data.batchNo,
+    mfgDate: data.mfgDate,
+    expDate: data.expDate,
+    level: data.level
+  });
+  // Prepare data array
+  const codesData = data.codes.map((code) => {
+    const uniqueId = `${data.generationId}${data.level}${code.code}`;
+    return {
+        serial_no: code.id,
+        product_id: data.productId,
+        batch_id: data.batchId,
+        location_id: data.batchLocationId,
+        code_gen_id: data.elementId,
+        unique_code: uniqueId,
+        country_code: countryCode.replaceAll("uniqueCode", uniqueId),
+      };
+  });
+  // Bulk insert
+  console.log("Inserting to db...");
+  for (let i = 0; i < codesData.length; i += lotSize) {
+    const chunk = codesData.slice(i, i + lotSize);
+    await createRecordsInDynamicTable(data.tableName, chunk, data.tx);
+  }
+  console.log("Inserted to db");
+  await updateStatusOfCodeRequest(data.elementId, "completed", data.tx);
+};
+
 // Reusable function for processing requested codes
 //technically a function should have 15 statements. Suggestion : call function inside the loop
 const processRequestedCodes = async () => {
@@ -311,6 +344,7 @@ const processRequestedCodes = async () => {
         statusInProgress = true;
         const codeGenerationRequests = await tx.codeGenerationRequest.findMany({
           where: { status: "requested" },
+          select: { id: true, product_id: true, batch_id: true, packaging_hierarchy: true, no_of_codes: true, generation_id: true },
           orderBy: { created_at: "asc" },
         });
 
@@ -337,7 +371,6 @@ const processRequestedCodes = async () => {
 
 
           const LEVEL = element.packaging_hierarchy.replace("level", "");
-          // use of parseInt is multiple times which will increase time complexity.
           const intLevel = parseInt(LEVEL);
           if (intLevel === 5 || intLevel === 6) {
             console.log("Current level ", LEVEL);
@@ -367,6 +400,31 @@ const processRequestedCodes = async () => {
               where: { id: product.country_id },
               select: { codeStructure: true },
             });
+
+            const codeSummaryData = {
+              product_id: product.id,
+              product_name: product.product_name,
+              packaging_hierarchy: element.packaging_hierarchy,
+              generation_id: element.generation_id,
+            };
+
+            const insertBulkData = {
+              elementId: element.id,
+              generationId: element.generation_id,
+              codeStructure: countryCodeStructure.codeStructure,
+              productId: product.id,
+              ndc: product.ndc,
+              gtin: product.gtin,
+              batchId: batch.id,
+              batchNo: batch.batch_no,
+              mfgDate: batch.manufacturing_date,
+              expDate: batch.expiry_date,
+              batchLocationId: batch.location_id,
+              level: LEVEL,
+              tableName,
+              tx
+            };
+
             if (exists) {
               const skipped = await tx.codeGenerationSummary.findFirst({
                 where: {
@@ -384,39 +442,10 @@ const processRequestedCodes = async () => {
                 take: parseInt(element.no_of_codes),
               });
 
-              await updateStatusOfCodeRequest(element.id, "inprogress", tx);
-              const countryCode = await getCountryCode(
-                countryCodeStructure.codeStructure,
-                product,
-                batch,
-                LEVEL
-              );
-              // Prepare data array
-              const data = codes.map((code) => {
-                const uniqueId = `${element.generation_id}${LEVEL}${code.code}`;
-                //sequence is defined statically, property name should be bind rather than statically defining db columns
-                return {
-                    product_id: product.id,
-                    batch_id: batch.id,
-                    location_id: batch.location_id,
-                    code_gen_id: element.id,
-                    unique_code: uniqueId,
-                    country_code: countryCode.replaceAll("uniqueCode", uniqueId),
-                  };
-              });
-              // Bulk insert
-              console.log("Inserting to db...");
-              for (let i = 0; i < data.length; i += lotSize) {
-                const chunk = data.slice(i, i + lotSize);
-                await createRecordsInDynamicTable(tableName, chunk, tx);
-              }
-              console.log("Inserted to db");
-              await updateStatusOfCodeRequest(element.id, "completed", tx);
+              await insertInBulk({ ...insertBulkData, codes });
+              
               await updateRecordInCodeSummary({
-                product_id: product.id,
-                product_name: product.product_name,
-                packaging_hierarchy: element.packaging_hierarchy,
-                generation_id: element.generation_id,
+                ...codeSummaryData,
                 generated: codes.length,
               }, tx);
               console.log("Done ", LEVEL);
@@ -425,44 +454,17 @@ const processRequestedCodes = async () => {
               await createDynamicTable(tableName, tx);
 
               const codes = await tx.codesGenerated.findMany({
+                select: { id: true, code: true },
                 skip: 0,
                 take: parseInt(element.no_of_codes),
               });
               console.log("Total codes fetch ", codes.length);
-              await updateStatusOfCodeRequest(element.id, "inprogress", tx);
-              // Prepare data array
-              let countryCode = await getCountryCode(
-                countryCodeStructure.codeStructure,
-                product,
-                batch,
-                LEVEL
-              );
-              console.log("Inserting to db first time ...");
-              const data = codes.map((code) => {
-                const uniqueId = `${element.generation_id}${LEVEL}${code.code}`;
-                return {
-                    product_id: product.id,
-                    batch_id: batch.id,
-                    location_id: batch.location_id,
-                    code_gen_id: element.id,
-                    unique_code: uniqueId,
-                    country_code: countryCode.replaceAll("uniqueCode", uniqueId),
-                  };
-              });
-              // Bulk insert
-              for (let i = 0; i < data.length; i += lotSize) {
-                const chunk = data.slice(i, i + lotSize);
-                await createRecordsInDynamicTable(tableName, chunk, tx);
-              }
-              console.log("Inserted to db first time");
-              await updateStatusOfCodeRequest(element.id, "completed", tx);
-              //duplicate code indicated by Rajan.
+
+              await insertInBulk({ ...insertBulkData, codes });
+
               await createRecordInCodeSummary({
-                product_id: product.id,
-                product_name: product.product_name,
-                packaging_hierarchy: element.packaging_hierarchy,
-                generation_id: element.generation_id,
-                no_of_codes: element.no_of_codes,
+                ...codeSummaryData,
+                generated: codes.length,
               }, tx);
               console.log("Done level ", LEVEL);
             }
@@ -486,9 +488,8 @@ const checkMasterCodeLimit = async () => {
   });
   console.log("Total codes ", superConfig.totalCodeGenerated);
   const nearCodesLimit = (parseInt(superConfig.totalCodeGenerated) * 80) / 100;
-  const aboveCodesLimit = await prisma.$executeRawUnsafe(
-    `SELECT * FROM "CodeGenerationSummary" WHERE CAST(last_generated AS INTEGER) >= ${nearCodesLimit} LIMIT 1;`
-  );
+  const query = `SELECT * FROM "CodeGenerationSummary" WHERE CAST(last_generated AS INTEGER) >= ${nearCodesLimit} LIMIT 1;`
+  const aboveCodesLimit = await prisma.$executeRawUnsafe(query);
 
   console.log("Near 80% ", aboveCodesLimit);
   if (aboveCodesLimit >= 1 && !reGeneratingCodes) {
