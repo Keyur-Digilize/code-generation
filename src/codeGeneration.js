@@ -14,6 +14,7 @@ import {
   updateSsccCodeSummary,
 } from "./databaseUtils.js";
 import { EXTENSION_DIGIT } from './constant.js'
+import { getSuperConfig } from './helper.js';
 
 let reGeneratingCodes = false;
 let statusInProgress = false;
@@ -55,15 +56,7 @@ const generateSkippedCode = async (reachUpTo, type, codeLength) => {
 const generateMasterCodes = async () => {
   console.log("Starting generate code job");
   reGeneratingCodes = true;
-  const superConfig = await prisma.superadmin_configuration.findFirst({
-    select: {
-      id: true,
-      codes_type: true,
-      code_length: true,
-      product_code_length: true,
-      totalCodeGenerated: true,
-    },
-  });
+  const superConfig = await getSuperConfig();
   try {
     let lotSize = Number(process.env.LOT_SIZE);
     let totalCodes = Number(process.env.TOTAL_CODES);
@@ -212,7 +205,7 @@ const getCountryCode = async ({ codeStructure, ndc, gtin, batchNo, mfgDate, expD
 
       case "CRMURL":
         const superAdminConfigureData =
-          await prisma.superadmin_configuration.findFirst({});
+          await getSuperConfig();
         finalCountryCode.push(superAdminConfigureData.crm_url);
         break;
 
@@ -338,12 +331,18 @@ const insertInBulk = async (data)=> {
 const processRequestedCodes = async () => {
   try {
     console.log("Request in progress...");
+    const superConfig = await getSuperConfig();
+
     await prisma.$transaction(async (tx) => {
       if (!statusInProgress) {
         console.log("Cron job started: Processing code generation requests...");
         statusInProgress = true;
+        const where = { status: "requested" };
+        if (superConfig.esign_status) {
+          where.esign_status = "approved"
+        }
         const codeGenerationRequests = await tx.codeGenerationRequest.findMany({
-          where: { status: "requested" },
+          where,
           select: { id: true, product_id: true, batch_id: true, packaging_hierarchy: true, no_of_codes: true, generation_id: true },
           orderBy: { created_at: "asc" },
         });
@@ -481,11 +480,7 @@ const processRequestedCodes = async () => {
 };
 
 const checkMasterCodeLimit = async () => {
-  const superConfig = await prisma.superadmin_configuration.findFirst({
-    select: {
-      totalCodeGenerated: true,
-    },
-  });
+  const superConfig = await getSuperConfig();
   console.log("Total codes ", superConfig.totalCodeGenerated);
   const nearCodesLimit = (parseInt(superConfig.totalCodeGenerated) * 80) / 100;
   const query = `SELECT * FROM "CodeGenerationSummary" WHERE CAST(last_generated AS INTEGER) >= ${nearCodesLimit} LIMIT 1;`
