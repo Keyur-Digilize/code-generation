@@ -6,7 +6,7 @@ const sanitizeTableName = (name) => {
   return name.replace(/[^a-zA-Z0-9_]/g, "");
 };
 
-const createDynamicTable = async (tableName, tx) => {
+const createDynamicTable = async (tableName, tx = prisma)  => {
   try {
     const sanitizedTableName = sanitizeTableName(tableName);
     const createTableQuery = `
@@ -61,11 +61,8 @@ const createRecordInDynamicTable = async (
   countryCode,
   serial_no
 ) => {
-  const uniqueId = `${
-    element.generation_id
-  }${element.packaging_hierarchy.replace("level", "")}${code.code}`;
-  // console.log("unique code ", uniqueId);
-  // Using string interpolation for table name, but handle parameters safely
+  const uniqueId = `${element.generation_id
+    }${element.packaging_hierarchy.replace("level", "")}${code.code}`;
   const query = `
       INSERT INTO ${tableName} 
         (product_id, batch_id, location_id, code_gen_id, unique_code, country_code, serial_no) 
@@ -112,7 +109,7 @@ const createRecordsInDynamicTable = async (tableName, data, tx = prisma) => {
   await tx.$executeRawUnsafe(query, ...parameters);
 };
 
-const createRecordInCodeSummary = async (data, tx) => {
+const createRecordInCodeSummary = async (data, tx = prisma) => {
   const packaging_hierarchy = data.packaging_hierarchy.replace("level", "");
   await tx.codeGenerationSummary.create({
     data: {
@@ -126,7 +123,7 @@ const createRecordInCodeSummary = async (data, tx) => {
   // console.log("code summary added", summary);
 };
 
-const updateRecordInCodeSummary = async (data, tx) => {
+const updateRecordInCodeSummary = async (data, tx = prisma) => {
   const packaging_hierarchy = data.packaging_hierarchy.replace("level", "");
   const previousSummaryOfCode = await tx.codeGenerationSummary.findFirst({
     where: {
@@ -159,7 +156,7 @@ const updateRecordInCodeSummary = async (data, tx) => {
   // console.log("code summary updated", summary);
 };
 
-const updateStatusOfCodeRequest = async (id, status, tx) => {
+const updateStatusOfCodeRequest = async (id, status, tx = prisma) => {
   await tx.codeGenerationRequest.update({
     where: { id },
     data: { status },
@@ -219,15 +216,13 @@ const createSsccCodeSummaryTable = async (tx = prisma) => {
   }
 };
 
-const createRecordsInSsccCodes = async (data, tx) => {
+const createRecordsInSsccCodes = async (data, tx = prisma) => {
   // Prepare the query for bulk insert
   const valuesPlaceholder = data
     .map(
       (_, index) =>
-        `($${index * 7 + 1}, $${index * 7 + 2}, $${index * 7 + 3}::uuid, $${
-          index * 7 + 4
-        }::uuid, $${index * 7 + 5}::uuid, $${index * 7 + 6}::uuid, $${
-          index * 7 + 7
+        `($${index * 7 + 1}, $${index * 7 + 2}, $${index * 7 + 3}::uuid, $${index * 7 + 4
+        }::uuid, $${index * 7 + 5}::uuid, $${index * 7 + 6}::uuid, $${index * 7 + 7
         }::uuid)`
     )
     .join(", ");

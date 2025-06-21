@@ -2,10 +2,10 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 let superConfig = null;
 
-const getSuperConfig = async ()=> {
+const getSuperConfig = async () => {
     try {
-        if(!superConfig){
-            superConfig = await prisma.superadmin_configuration.findFirst({ 
+        if (!superConfig) {
+            superConfig = await prisma.superadmin_configuration.findFirst({
                 select: {
                     id: true,
                     code_length: true,
@@ -16,7 +16,8 @@ const getSuperConfig = async ()=> {
                     esign_status: true,
                     audit_logs: true,
                     crm_url: true,
-                }}
+                }
+            }
             );
         }
         return superConfig;
