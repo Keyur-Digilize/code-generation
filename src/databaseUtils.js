@@ -6,7 +6,7 @@ const sanitizeTableName = (name) => {
   return name.replace(/[^a-zA-Z0-9_]/g, "");
 };
 
-const createDynamicTable = async (tableName, tx = prisma)  => {
+const createDynamicTable = async (tableName, tx = prisma) => {
   try {
     const sanitizedTableName = sanitizeTableName(tableName);
     const createTableQuery = `
@@ -29,6 +29,12 @@ const createDynamicTable = async (tableName, tx = prisma)  => {
                 is_scanned_in_order BOOLEAN DEFAULT FALSE,
                 storage_bin INTEGER,
                 in_transit BOOLEAN DEFAULT FALSE,
+                is_consume_product BOOLEAN DEFAULT FALSE,
+                consume_date  VARCHAR(255) DEFAULT NULL,
+                consume_remark VARCHAR(255) DEFAULT NULL,
+                is_report_product BOOLEAN DEFAULT FALSE,
+                report_reason  VARCHAR(255) DEFAULT NULL,
+                report_remark VARCHAR(255) DEFAULT NULL,
                 updated_at TIMESTAMP DEFAULT NOW(),
                 created_at TIMESTAMP DEFAULT NOW()
             );
@@ -61,8 +67,9 @@ const createRecordInDynamicTable = async (
   countryCode,
   serial_no
 ) => {
-  const uniqueId = `${element.generation_id
-    }${element.packaging_hierarchy.replace("level", "")}${code.code}`;
+  const uniqueId = `${
+    element.generation_id
+  }${element.packaging_hierarchy.replace("level", "")}${code.code}`;
   const query = `
       INSERT INTO ${tableName} 
         (product_id, batch_id, location_id, code_gen_id, unique_code, country_code, serial_no) 
@@ -86,7 +93,11 @@ const createRecordsInDynamicTable = async (tableName, data, tx = prisma) => {
   const valuesPlaceholder = data
     .map(
       (_, index) =>
-        `($${index * 7 + 1}::uuid, $${index * 7 + 2}::uuid, $${index * 7 + 3}::uuid, $${index * 7 + 4}, $${index * 7 + 5}, $${index * 7 + 6}, $${index * 7 + 7})`
+        `($${index * 7 + 1}::uuid, $${index * 7 + 2}::uuid, $${
+          index * 7 + 3
+        }::uuid, $${index * 7 + 4}, $${index * 7 + 5}, $${index * 7 + 6}, $${
+          index * 7 + 7
+        })`
     )
     .join(", ");
 
@@ -221,8 +232,10 @@ const createRecordsInSsccCodes = async (data, tx = prisma) => {
   const valuesPlaceholder = data
     .map(
       (_, index) =>
-        `($${index * 7 + 1}, $${index * 7 + 2}, $${index * 7 + 3}::uuid, $${index * 7 + 4
-        }::uuid, $${index * 7 + 5}::uuid, $${index * 7 + 6}::uuid, $${index * 7 + 7
+        `($${index * 7 + 1}, $${index * 7 + 2}, $${index * 7 + 3}::uuid, $${
+          index * 7 + 4
+        }::uuid, $${index * 7 + 5}::uuid, $${index * 7 + 6}::uuid, $${
+          index * 7 + 7
         }::uuid)`
     )
     .join(", ");
