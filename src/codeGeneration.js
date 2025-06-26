@@ -439,6 +439,7 @@ const processRequestedCodes = async () => {
                   ? parseInt(skipped?.last_generated)
                   : 0,
                 take: parseInt(element.no_of_codes),
+                orderBy: { id: 'asc' }
               });
 
               await insertInBulk({ ...insertBulkData, codes });
@@ -456,6 +457,7 @@ const processRequestedCodes = async () => {
                 select: { id: true, code: true },
                 skip: 0,
                 take: parseInt(element.no_of_codes),
+                orderBy: { id: 'asc' }
               });
               console.log("Total codes fetch ", codes.length);
 
